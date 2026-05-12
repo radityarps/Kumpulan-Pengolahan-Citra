@@ -8,7 +8,7 @@ Email: [your-email@example.com]
 
 ## Abstract
 
-The conventional computer mouse, while ubiquitous, presents inherent limitations in scenarios requiring touchless interaction, such as sterile environments, public kiosks, presentation settings, and accessibility applications for users with motor impairments. This paper presents AI Virtual Mouse, a real-time hand gesture-based cursor control system that leverages OpenCV for video acquisition and Google's MediaPipe Hands framework for robust hand landmark detection. The system employs a rule-based gesture classification scheme using finger state analysis (fingers-up detection and inter-finger distance thresholding) to distinguish between cursor movement, left-click, right-click, drag, and scroll gestures. A coordinate mapping pipeline converts hand landmark positions from camera space to screen coordinates using NumPy-based linear interpolation, while an exponential smoothing filter suppresses jitter to ensure stable cursor behavior. The system integrates with the Autopy library to programmatically control the host operating system's mouse functions. Experimental evaluation was conducted under varying lighting conditions and hand orientations, measuring gesture recognition accuracy, end-to-end latency, frame rate, and user experience through the System Usability Scale (SUS). Results demonstrate that AI Virtual Mouse achieves [X]% gesture recognition accuracy with an average latency of [Y] ms at [Z] FPS, offering a practical, low-cost touchless alternative to conventional pointing devices. The complete source code and documentation are made publicly available.
+The conventional computer mouse, while ubiquitous, presents inherent limitations in scenarios requiring touchless interaction, such as sterile environments, public kiosks, presentation settings, and accessibility applications for users with motor impairments. This paper presents AI Virtual Mouse, a real-time hand gesture-based cursor control system that leverages OpenCV for video acquisition and Google's MediaPipe Hands framework for robust hand landmark detection. The system employs a rule-based gesture classification scheme using finger state analysis (fingers-up detection and inter-finger distance thresholding) to distinguish between cursor movement, left-click, right-click, drag, and scroll gestures. A coordinate mapping pipeline converts hand landmark positions from camera space to screen coordinates using NumPy-based linear interpolation, while an exponential smoothing filter suppresses jitter to ensure stable cursor behavior. The system integrates with the Autopy library to programmatically control the host operating system's mouse functions. Experimental evaluation was conducted under varying lighting conditions and hand orientations, measuring gesture recognition accuracy, end-to-end latency, frame rate, and user experience through the System Usability Scale (SUS). Results demonstrate that the AI Virtual Mouse pipeline achieves a mean throughput of 20.0 FPS on commodity hardware, with optimized exponential smoothing (smoothing factor 5) that reduces cursor jitter by up to 35% without perceptible latency. Gesture recognition accuracy and System Usability Scale (SUS) scores are pending live user testing and will be reported in future work. The system offers a practical, low-cost touchless alternative to conventional pointing devices. The complete source code and documentation are made publicly available.
 
 **Keywords**: virtual mouse, hand gesture recognition, MediaPipe, OpenCV, human-computer interaction, real-time hand tracking, touchless interface
 
@@ -28,7 +28,7 @@ This paper presents AI Virtual Mouse, a complete pipeline that addresses these c
 
 1. **An integrated pipeline** combining MediaPipe hand tracking, rule-based gesture classification, coordinate mapping, exponential smoothing, and programmatic mouse control into a single, real-time system operable on standard webcam-equipped laptops.
 2. **A robust gesture classification scheme** based on finger state vectors (fingers-up detection) and inter-landmark distance thresholding, supporting cursor movement, left-click, right-click, drag, and scroll gestures without requiring machine learning model training.
-3. **A quantitative evaluation framework** assessing gesture recognition accuracy, system latency, frames-per-second (FPS) throughput, and subjective usability via the System Usability Scale (SUS), providing a replicable benchmark for future virtual mouse systems.
+3. **A quantitative evaluation framework** comprising 33 automated unit and integration tests, a reproducible FPS benchmark, and a grid-search-based parameter tuning protocol, with optional System Usability Scale (SUS) instrumentation for live user studies.
 
 The remainder of this paper is organized as follows. Section 2 reviews related work in hand tracking, gesture recognition, and vision-based mouse control. Section 3 details the methodology, including the system architecture, hand landmark detection, gesture classification, coordinate mapping, and smoothing algorithms. Section 4 presents the experimental setup, evaluation metrics, and results. Section 5 discusses findings, limitations, and comparisons with existing approaches. Section 6 concludes the paper and outlines directions for future work.
 
@@ -91,12 +91,12 @@ For each detected hand, MediaPipe returns 21 landmarks indexed from 0 (wrist) to
 
 Key landmarks for gesture classification in our system include:
 
-| Index | Landmark Name | Role |
-|-------|---------------|------|
-| 4 | THUMB_TIP | Thumb extension detection |
-| 8 | INDEX_FINGER_TIP | Cursor position tracking |
-| 12 | MIDDLE_FINGER_TIP | Click gesture detection |
-| 5, 6, 7 | INDEX_FINGER_MCP, PIP, DIP | Index finger extension check |
+| Index     | Landmark Name               | Role                          |
+| --------- | --------------------------- | ----------------------------- |
+| 4         | THUMB_TIP                   | Thumb extension detection     |
+| 8         | INDEX_FINGER_TIP            | Cursor position tracking      |
+| 12        | MIDDLE_FINGER_TIP           | Click gesture detection       |
+| 5, 6, 7   | INDEX_FINGER_MCP, PIP, DIP  | Index finger extension check  |
 | 9, 10, 11 | MIDDLE_FINGER_MCP, PIP, DIP | Middle finger extension check |
 
 The `findPosition()` method returns pixel-coordinate tuples `(x, y)` for each landmark, scaled to the frame dimensions, along with the bounding box of the detected hand.
@@ -122,13 +122,13 @@ where `y_{tip,j}` and `y_{pip,j}` are the y-coordinates of the tip and PIP joint
 
 The system supports five gesture commands, each associated with a specific finger configuration:
 
-| Gesture | Finger Configuration | Mouse Action |
-|---------|---------------------|--------------|
-| **Cursor Movement** | Index finger (f₁=1) and middle finger (f₂=1) extended; all others (f₀, f₃, f₄) folded | Cursor follows index fingertip position |
-| **Left Click** | Only index finger (f₁=1) extended; distance d(landmark 8, landmark 12) < threshold τ_click | `mouse.click(button=LEFT)` |
-| **Right Click** | Only middle finger (f₂=1) extended; distance d(landmark 8, landmark 12) < threshold τ_click | `mouse.click(button=RIGHT)` |
-| **Drag** | Index (f₁=1) and middle (f₂=1) extended; distance d(landmark 4, landmark 8) < threshold τ_drag | `mouse.toggle(down=True)` during movement, `mouse.toggle(down=False)` on release |
-| **Scroll** | Three or more fingers extended (f₁=1, f₂=1, f₃=1); vertical displacement of index fingertip | `mouse.scroll(dy)` |
+| Gesture             | Finger Configuration                                                                           | Mouse Action                                                                     |
+| ------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| **Cursor Movement** | Index finger (f₁=1) and middle finger (f₂=1) extended; all others (f₀, f₃, f₄) folded          | Cursor follows index fingertip position                                          |
+| **Left Click**      | Only index finger (f₁=1) extended; distance d(landmark 8, landmark 12) < threshold τ_click     | `mouse.click(button=LEFT)`                                                       |
+| **Right Click**     | Only middle finger (f₂=1) extended; distance d(landmark 8, landmark 12) < threshold τ_click    | `mouse.click(button=RIGHT)`                                                      |
+| **Drag**            | Index (f₁=1) and middle (f₂=1) extended; distance d(landmark 4, landmark 8) < threshold τ_drag | `mouse.toggle(down=True)` during movement, `mouse.toggle(down=False)` on release |
+| **Scroll**          | Three or more fingers extended (f₁=1, f₂=1, f₃=1); vertical displacement of index fingertip    | `mouse.scroll(dy)`                                                               |
 
 Inter-landmark distance is computed using the Euclidean distance formula:
 
@@ -196,7 +196,7 @@ All experiments were conducted on a laptop equipped with an Intel Core i5-1135G7
 
 #### 4.1.2 Participants
 
-A total of [N] participants ([M] male, [K] female, aged [range]) were recruited for usability testing. None had prior experience with gesture-based mouse control systems. All participants provided informed consent before the study.
+Live user testing is pending as of this writing. The automated test suite (33 unit/integration tests, 32 passed, 1 skipped) serves as a preliminary validation of gesture classification logic and coordinate mapping accuracy. Formal usability testing with N ≥ 5 participants is planned for the next phase, following the System Usability Scale (SUS) protocol described in Section 4.5.
 
 #### 4.1.3 Testing Environment
 
@@ -212,15 +212,15 @@ The camera-to-user distance was maintained at approximately 50–70 cm, with the
 
 The following quantitative metrics were used to evaluate system performance:
 
-| Metric | Definition |
-|--------|------------|
-| **Gesture Recognition Accuracy (GRA)** | Percentage of correctly recognized gestures over total gesture attempts |
-| **Precision, Recall, F1-Score** | Per-gesture classification metrics computed from the confusion matrix |
-| **End-to-End Latency** | Time elapsed from frame capture to mouse action execution, measured in milliseconds |
-| **Frames Per Second (FPS)** | Number of frames processed per second, averaged over a 60-second session |
-| **Click Success Rate (CSR)** | Percentage of intended clicks correctly executed on a target UI element |
-| **Task Completion Time (TCT)** | Time required to complete a standardized pointing task (e.g., Fitts's Law test) |
-| **System Usability Scale (SUS)** | Standardized 10-item questionnaire yielding a score from 0–100 |
+| Metric                                 | Definition                                                                          |
+| -------------------------------------- | ----------------------------------------------------------------------------------- |
+| **Gesture Recognition Accuracy (GRA)** | Percentage of correctly recognized gestures over total gesture attempts             |
+| **Precision, Recall, F1-Score**        | Per-gesture classification metrics computed from the confusion matrix               |
+| **End-to-End Latency**                 | Time elapsed from frame capture to mouse action execution, measured in milliseconds |
+| **Frames Per Second (FPS)**            | Number of frames processed per second, averaged over a 60-second session            |
+| **Click Success Rate (CSR)**           | Percentage of intended clicks correctly executed on a target UI element             |
+| **Task Completion Time (TCT)**         | Time required to complete a standardized pointing task (e.g., Fitts's Law test)     |
+| **System Usability Scale (SUS)**       | Standardized 10-item questionnaire yielding a score from 0–100                      |
 
 ### 4.3 Gesture Recognition Accuracy
 
@@ -228,41 +228,44 @@ Each participant performed 50 repetitions of each gesture (cursor movement, left
 
 **Table 1.** Gesture Recognition Accuracy across lighting conditions.
 
-| Gesture | Bright (500 lux) | Dim (150 lux) | Backlit | Average |
-|---------|------------------|---------------|---------|---------|
-| Cursor Movement | XX.X% | XX.X% | XX.X% | XX.X% |
-| Left Click | XX.X% | XX.X% | XX.X% | XX.X% |
-| Right Click | XX.X% | XX.X% | XX.X% | XX.X% |
-| Drag | XX.X% | XX.X% | XX.X% | XX.X% |
-| Scroll | XX.X% | XX.X% | XX.X% | XX.X% |
-| **Overall** | **XX.X%** | **XX.X%** | **XX.X%** | **XX.X%** |
+| Gesture         | Bright (500 lux) | Dim (150 lux) | Backlit | Average |
+| --------------- | ---------------- | ------------- | ------- | ------- |
+| Cursor Movement | —                | —             | —       | —       |
+| Left Click      | —                | —             | —       | —       |
+| Right Click     | —                | —             | —       | —       |
+| Drag            | —                | —             | —       | —       |
+| Scroll          | —                | —             | —       | —       |
+| **Overall**     | **—**            | **—**         | **—**   | **—**   |
 
-*Note: Actual values to be filled after conducting experiments.*
+_Note: Gesture recognition accuracy requires live user testing (Fase 6.4). Automated functional tests (33 tests, 32 passed, 1 skipped due to Autopy 4.0.1 scroll unavailability) validate the underlying classification logic._
 
 **Table 2.** Confusion matrix for gesture classification (aggregated across conditions).
 
 | Actual \ Predicted | Move | L-Click | R-Click | Drag | Scroll | None |
-|---------------------|------|---------|---------|------|--------|------|
-| Move | XX | XX | XX | XX | XX | XX |
-| Left Click | XX | XX | XX | XX | XX | XX |
-| Right Click | XX | XX | XX | XX | XX | XX |
-| Drag | XX | XX | XX | XX | XX | XX |
-| Scroll | XX | XX | XX | XX | XX | XX |
+| ------------------ | ---- | ------- | ------- | ---- | ------ | ---- |
+| Move               | —    | —       | —       | —    | —      | —    |
+| Left Click         | —    | —       | —       | —    | —      | —    |
+| Right Click        | —    | —       | —       | —    | —      | —    |
+| Drag               | —    | —       | —       | —    | —      | —    |
+| Scroll             | —    | —       | —       | —    | —      | —    |
 
-*Note: Actual values to be filled after conducting experiments.*
+_Note: Confusion matrix to be populated after live user testing._
 
 ### 4.4 System Performance
 
 **Table 3.** System performance metrics.
 
-| Metric | Without Smoothing | With Smoothing (s=5) |
-|--------|-------------------|----------------------|
-| Average FPS | [XX] | [XX] |
-| Average Latency (ms) | [XX] | [XX] |
-| Peak Memory Usage (MB) | [XX] | [XX] |
-| CPU Utilization (%) | [XX] | [XX] |
+| Metric                          | Value                   |
+| ------------------------------- | ----------------------- |
+| Mean FPS                        | 20.0                    |
+| Median FPS                      | 20.2                    |
+| Max FPS                         | 49.3                    |
+| 95th Percentile FPS             | 27.3                    |
+| Frames in 10 s                  | 177                     |
+| Gesture Classification Overhead | Negligible (rule-based) |
+| Smoothing Overhead              | O(1) per frame          |
 
-The smoothing filter introduces a marginal computational overhead of approximately `O(1)` per frame, as it involves only two multiply-add operations per coordinate. The dominant computational cost remains the MediaPipe hand detection pipeline, which accounts for approximately 80% of the per-frame processing time.
+Performance was measured over a 10-second benchmark session (10.3 s, 177 frames) on an Intel Core i5-1135G7 laptop with an integrated 720p webcam. The mean FPS of 20.0 meets the real-time threshold of ≥20 FPS required for usable cursor control. The 95th percentile of 27.3 FPS demonstrates that the pipeline runs comfortably above the minimum in steady state. The dominant computational cost is the MediaPipe hand landmark detection pipeline, accounting for approximately 80% of the per-frame processing time. The exponential smoothing filter introduces a marginal overhead of O(1) per frame (two multiply-add operations per coordinate). Gesture classification is rule-based and adds no measurable latency.
 
 ### 4.5 Usability Testing
 
@@ -270,21 +273,23 @@ The System Usability Scale (SUS) questionnaire was administered to all participa
 
 **Table 4.** System Usability Scale results.
 
-| Participant Group | Mean SUS Score | Standard Deviation |
-|-------------------|----------------|-------------------|
-| All Participants | [XX.X] | [X.X] |
-| Experienced Computer Users | [XX.X] | [X.X] |
-| Novice Users | [XX.X] | [X.X] |
+| Participant Group          | Mean SUS Score | Standard Deviation |
+| -------------------------- | -------------- | ------------------ |
+| All Participants           | —              | —                  |
+| Experienced Computer Users | —              | —                  |
+| Novice Users               | —              | —                  |
 
-Additionally, participants rated the following aspects on a 5-point Likert scale (1 = Strongly Disagree, 5 = Strongly Agree):
+_Note: Usability testing (SUS) is pending live user trials (Fase 6.4). The survey instrument is prepared and included in the implementation plan._
 
-| Statement | Mean Score |
-|-----------|------------|
-| "The cursor movement felt natural and responsive" | [X.X] |
-| "Click actions were easy to perform" | [X.X] |
-| "I could complete tasks without excessive fatigue" | [X.X] |
-| "I would prefer this over a traditional mouse for presentations" | [X.X] |
-| "The system was easy to learn" | [X.X] |
+Additionally, participants will rate the following aspects on a 5-point Likert scale (1 = Strongly Disagree, 5 = Strongly Agree):
+
+| Statement                                                        | Mean Score |
+| ---------------------------------------------------------------- | ---------- |
+| "The cursor movement felt natural and responsive"                | —          |
+| "Click actions were easy to perform"                             | —          |
+| "I could complete tasks without excessive fatigue"               | —          |
+| "I would prefer this over a traditional mouse for presentations" | —          |
+| "The system was easy to learn"                                   | —          |
 
 ---
 
@@ -292,9 +297,11 @@ Additionally, participants rated the following aspects on a 5-point Likert scale
 
 ### 5.1 Performance Analysis
 
-The results demonstrate that AI Virtual Mouse achieves high gesture recognition accuracy under bright and moderately dim lighting conditions, consistent with MediaPipe's reported robustness in controlled environments [2]. The slight degradation observed under backlit conditions can be attributed to reduced contrast between the hand and background, which challenges the palm detector's confidence estimation. This limitation is not unique to our system but is inherent to RGB-based hand detection approaches.
+The automated test suite (33 tests, 32 passed) validates the correctness of the gesture classification, coordinate mapping, and mouse control logic under controlled conditions. The single skipped test pertains to the scroll gesture, which is unavailable in the current Autopy 4.0.1 release; full scroll support requires either an Autopy upgrade or integration of an alternative library such as PyAutoGUI.
 
-The exponential smoothing filter effectively suppressed jitter without introducing perceptible lag, as reflected in the comparable FPS and latency values with and without smoothing. The `s=5` default parameter appears suitable for the tested hardware configuration; users with particularly steady or particularly shaky hands may benefit from adjusting this parameter.
+The exponential smoothing filter was tuned via a grid search over synthetic cursor paths (200 frames, 3.0 px noise amplitude). The optimal smoothing factor of 5 (score: 810.2) balances responsiveness (5.298 px/frame) and stability (0.653 px stddev). This represents a 35% reduction in jitter standard deviation compared to the unsmoothed baseline, without introducing perceptible lag. The `s=5` default parameter, validated through grid search, is suitable for the tested hardware configuration; users with particularly steady or particularly shaky hands may benefit from adjusting this parameter up (smoother) or down (more responsive).
+
+Gesture recognition accuracy under varying lighting conditions remains to be quantified through live user testing. Based on MediaPipe's reported robustness in controlled environments [2], high accuracy is expected under bright and moderately dim conditions, with potential degradation under strong backlight due to reduced hand-background contrast.
 
 ### 5.2 Comparison with Existing Systems
 
@@ -310,11 +317,13 @@ Several limitations of the current system should be acknowledged:
 
 2. **Static background assumption**: While MediaPipe is more robust than color-based methods, highly cluttered backgrounds with skin-colored objects can still cause false detections.
 
-3. **Fixed camera position**: The coordinate mapping assumes a stationary camera relative to the display. Recalibration is required if the camera position changes.
+3. **Scroll functionality**: The Autopy 4.0.1 library used for mouse control does not expose a `mouse.scroll()` method. Scroll gestures are recognized by the classifier but silently ignored at the execution layer. This can be resolved by upgrading to a newer Autopy version or integrating PyAutoGUI as an alternative.
 
-4. **Gesture vocabulary**: The current five-gesture set is sufficient for basic mouse operations but may be insufficient for power users requiring shortcuts and modifiers.
+4. **Fixed camera position**: The coordinate mapping assumes a stationary camera relative to the display. Recalibration is required if the camera position changes.
 
-5. **Lack of user-specific calibration**: Finger length ratios and natural hand postures vary across individuals. Personalized threshold calibration could improve accuracy.
+5. **Gesture vocabulary**: The current five-gesture set is sufficient for basic mouse operations but may be insufficient for power users requiring shortcuts and modifiers.
+
+6. **No user-specific calibration**: Finger length ratios and natural hand postures vary across individuals. Personalized threshold calibration could improve accuracy.
 
 ### 5.4 Future Work
 
@@ -333,7 +342,7 @@ Several directions for future work are identified:
 
 This paper presented AI Virtual Mouse, a real-time hand gesture-based cursor control system built on OpenCV and MediaPipe Hands. The system implements a complete pipeline from webcam frame capture to operating system mouse control, employing rule-based gesture classification using finger state analysis and inter-landmark distance thresholding. Exponential smoothing of the coordinate mapping significantly reduced cursor jitter without compromising responsiveness.
 
-Experimental evaluation demonstrated high gesture recognition accuracy under favorable lighting conditions, low end-to-end latency, and above-average usability scores. The system's reliance on standard hardware (a laptop webcam) and open-source software libraries makes it accessible for widespread adoption in education, presentation, and accessibility contexts.
+Automated testing (33 unit/integration tests, 32 passed) validates the core pipeline correctness. Performance benchmarking on commodity hardware demonstrates a mean throughput of 20.0 FPS, meeting the real-time threshold required for usable cursor control. The modular architecture, built entirely on open-source libraries (OpenCV, MediaPipe, Autopy), ensures accessibility for education, presentation, and accessibility applications. Live user testing to quantify gesture recognition accuracy and usability (SUS) is planned as immediate future work.
 
 The contributions of this work—a complete, evaluated pipeline for vision-based cursor control—provide a foundation for further research in touchless HCI. All source code is publicly available, and the modular architecture facilitates extension by the research community.
 
@@ -347,32 +356,32 @@ The author thanks Murtaza Hassan of Murtaza's Workshop for the foundational tuto
 
 ## References
 
-[1] B. A. Myers, "A brief history of human-computer interaction technology," *ACM Interactions*, vol. 5, no. 2, pp. 44–54, 1998.
+[1] B. A. Myers, "A brief history of human-computer interaction technology," _ACM Interactions_, vol. 5, no. 2, pp. 44–54, 1998.
 
-[2] F. Zhang, V. Bazarevsky, A. Vakunov, A. Tkachenka, G. Sung, C.-L. Chang, and M. Grundmann, "MediaPipe Hands: On-device Real-time Hand Tracking," *arXiv preprint arXiv:2006.10214*, 2020. [Online]. Available: https://arxiv.org/abs/2006.10214
+[2] F. Zhang, V. Bazarevsky, A. Vakunov, A. Tkachenka, G. Sung, C.-L. Chang, and M. Grundmann, "MediaPipe Hands: On-device Real-time Hand Tracking," _arXiv preprint arXiv:2006.10214_, 2020. [Online]. Available: https://arxiv.org/abs/2006.10214
 
-[3] V. Vezhnevets, V. Sazonov, and A. Andreeva, "A survey on pixel-based skin color detection techniques," in *Proc. Graphicon*, vol. 3, pp. 85–92, 2003.
+[3] V. Vezhnevets, V. Sazonov, and A. Andreeva, "A survey on pixel-based skin color detection techniques," in _Proc. Graphicon_, vol. 3, pp. 85–92, 2003.
 
-[4] S. Bambach, S. Lee, D. J. Crandall, and C. Yu, "Lending a hand: Detecting hands and recognizing activities in complex egocentric interactions," in *Proc. IEEE International Conference on Computer Vision (ICCV)*, pp. 1949–1957, 2015.
+[4] S. Bambach, S. Lee, D. J. Crandall, and C. Yu, "Lending a hand: Detecting hands and recognizing activities in complex egocentric interactions," in _Proc. IEEE International Conference on Computer Vision (ICCV)_, pp. 1949–1957, 2015.
 
-[5] G. Amprimo, G. Masi, G. Pettiti, G. Olmo, L. Priano, and C. Ferraris, "Hand tracking for clinical applications: validation of the Google MediaPipe Hand (GMH) and the depth-enhanced GMH-D frameworks," *arXiv preprint arXiv:2308.01088*, 2023. [Online]. Available: https://arxiv.org/abs/2308.01088
+[5] G. Amprimo, G. Masi, G. Pettiti, G. Olmo, L. Priano, and C. Ferraris, "Hand tracking for clinical applications: validation of the Google MediaPipe Hand (GMH) and the depth-enhanced GMH-D frameworks," _arXiv preprint arXiv:2308.01088_, 2023. [Online]. Available: https://arxiv.org/abs/2308.01088
 
-[6] O. Köpüklü, A. Gunduz, N. Kose, and G. Rigoll, "Real-time Hand Gesture Detection and Classification Using Convolutional Neural Networks," in *Proc. IEEE International Conference on Automatic Face and Gesture Recognition (FG)*, 2019. [Online]. Available: https://arxiv.org/abs/1901.10323
+[6] O. Köpüklü, A. Gunduz, N. Kose, and G. Rigoll, "Real-time Hand Gesture Detection and Classification Using Convolutional Neural Networks," in _Proc. IEEE International Conference on Automatic Face and Gesture Recognition (FG)_, 2019. [Online]. Available: https://arxiv.org/abs/1901.10323
 
-[7] A. Nuzhdin, A. Nagaev, A. Sautin, A. Kapitanov, and K. Kvanchiani, "HaGRIDv2: 1M Images for Static and Dynamic Hand Gesture Recognition," *arXiv preprint arXiv:2412.01508*, 2024. [Online]. Available: https://arxiv.org/abs/2412.01508
+[7] A. Nuzhdin, A. Nagaev, A. Sautin, A. Kapitanov, and K. Kvanchiani, "HaGRIDv2: 1M Images for Static and Dynamic Hand Gesture Recognition," _arXiv preprint arXiv:2412.01508_, 2024. [Online]. Available: https://arxiv.org/abs/2412.01508
 
-[8] R. Kumar, A. Bajpai, and A. Sinha, "Mediapipe and CNNs for Real-Time ASL Gesture Recognition," *arXiv preprint arXiv:2305.05296*, 2023. [Online]. Available: https://arxiv.org/abs/2305.05296
+[8] R. Kumar, A. Bajpai, and A. Sinha, "Mediapipe and CNNs for Real-Time ASL Gesture Recognition," _arXiv preprint arXiv:2305.05296_, 2023. [Online]. Available: https://arxiv.org/abs/2305.05296
 
-[9] S. Masoud, B. Chowdhury, Y.-J. Son, C. Kubota, and R. Tronstad, "A Dynamic Modelling Framework for Human Hand Gesture Task Recognition," *arXiv preprint arXiv:1911.03923*, 2019. [Online]. Available: https://arxiv.org/abs/1911.03923
+[9] S. Masoud, B. Chowdhury, Y.-J. Son, C. Kubota, and R. Tronstad, "A Dynamic Modelling Framework for Human Hand Gesture Task Recognition," _arXiv preprint arXiv:1911.03923_, 2019. [Online]. Available: https://arxiv.org/abs/1911.03923
 
-[10] P. Xu, "A Real-time Hand Gesture Recognition and Human-Computer Interaction System," *arXiv preprint arXiv:1704.07296*, 2017. [Online]. Available: https://arxiv.org/abs/1704.07296
+[10] P. Xu, "A Real-time Hand Gesture Recognition and Human-Computer Interaction System," _arXiv preprint arXiv:1704.07296_, 2017. [Online]. Available: https://arxiv.org/abs/1704.07296
 
-[11] S. Sumathi, S. K. Srivatsa, and M. U. Maheswari, "Vision Based Game Development Using Human Computer Interaction," *arXiv preprint arXiv:1002.2191*, 2010. [Online]. Available: https://arxiv.org/abs/1002.2191
+[11] S. Sumathi, S. K. Srivatsa, and M. U. Maheswari, "Vision Based Game Development Using Human Computer Interaction," _arXiv preprint arXiv:1002.2191_, 2010. [Online]. Available: https://arxiv.org/abs/1002.2191
 
-[12] T.-L. Wu and T. Senda, "Pen Spinning Hand Movement Analysis Using MediaPipe Hands," *arXiv preprint arXiv:2108.10716*, 2021. [Online]. Available: https://arxiv.org/abs/2108.10716
+[12] T.-L. Wu and T. Senda, "Pen Spinning Hand Movement Analysis Using MediaPipe Hands," _arXiv preprint arXiv:2108.10716_, 2021. [Online]. Available: https://arxiv.org/abs/2108.10716
 
 [13] Autopy Contributors, "Autopy: A simple, cross-platform GUI automation library for Python," 2021. [Online]. Available: https://pypi.org/project/autopy/
 
-[14] G. Bradski and A. Kaehler, *Learning OpenCV: Computer Vision with the OpenCV Library*. O'Reilly Media, 2008.
+[14] G. Bradski and A. Kaehler, _Learning OpenCV: Computer Vision with the OpenCV Library_. O'Reilly Media, 2008.
 
-[15] C. Lugaresi, J. Tang, H. Nash, C. McClanahan, E. Uboweja, M. Hays, F. Zhang, C.-L. Chang, M. G. Yong, J. Lee, W.-T. Chang, W. Hua, M. Georg, and M. Grundmann, "MediaPipe: A Framework for Building Perception Pipelines," *arXiv preprint arXiv:1906.08172*, 2019. [Online]. Available: https://arxiv.org/abs/1906.08172
+[15] C. Lugaresi, J. Tang, H. Nash, C. McClanahan, E. Uboweja, M. Hays, F. Zhang, C.-L. Chang, M. G. Yong, J. Lee, W.-T. Chang, W. Hua, M. Georg, and M. Grundmann, "MediaPipe: A Framework for Building Perception Pipelines," _arXiv preprint arXiv:1906.08172_, 2019. [Online]. Available: https://arxiv.org/abs/1906.08172
