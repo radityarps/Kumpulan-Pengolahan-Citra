@@ -18,6 +18,7 @@ from src.config import (
     CLICK_THRESHOLD_PX,
     DEBOUNCE_TIME_MS,
     DRAG_THRESHOLD_PX,
+    FRAME_HEIGHT,
     SCROLL_DEAD_ZONE_PX,
     SCROLL_SENSITIVITY,
 )
@@ -88,10 +89,24 @@ class TestGestureClassifier(unittest.TestCase):
             debounce_ms=DEBOUNCE_TIME_MS,
             scroll_sensitivity=SCROLL_SENSITIVITY,
             scroll_dead_zone=SCROLL_DEAD_ZONE_PX,
-            gesture_style="legacy",
+            gesture_style="practical_no_thumb",
         )
         self.lm = FULL_LANDMARKS
         self.dist_fn = make_distance_fn(self.lm)
+
+    def make_dist_fn_with_pinch(self, idx_mid=None, idx_ring=None):
+        """Override selected pinch distances while keeping others realistic."""
+        base_fn = make_distance_fn(self.lm)
+
+        def fn(p1, p2, draw=False):
+            pair = {p1, p2}
+            if idx_mid is not None and pair == {8, 12}:
+                return idx_mid, (0, 0), (0, 0, 0, 0)
+            if idx_ring is not None and pair == {8, 16}:
+                return idx_ring, (0, 0), (0, 0, 0, 0)
+            return base_fn(p1, p2, draw=draw)
+
+        return fn
 
     def call_classify(self, fingers, lmList=None, wait_debounce=True):
         """Helper: call classify and optionally wait for debounce."""
@@ -106,41 +121,74 @@ class TestGestureClassifier(unittest.TestCase):
 
     # ── T1: Move Mode ──────────────────────────────────────────────────
     def test_t1_move_mode(self):
-        """T1: index + middle up → Move mode, action=move"""
-        mode, action = self.call_classify([0, 1, 1, 0, 0])
+        """T1: index only up (thumb ignored) → Move mode, action=move"""
+        mode, action = self.call_classify([0, 1, 0, 0, 0])
+        self.assertEqual(mode, "Move")
+        self.assertEqual(action, "move")
+        mode, action = self.call_classify([1, 1, 0, 0, 0])
         self.assertEqual(mode, "Move")
         self.assertEqual(action, "move")
 
     # ── T2: Click Mode ─────────────────────────────────────────────────
     def test_t2_click_entry_triggers(self):
-        """T2: [1,0,1,0,0] should click once on entry"""
-        mode, action = self.cf.classify([1, 0, 1, 0, 0], self.lm, self.dist_fn)
-        self.assertEqual(action, "click")
-        # Debounce mode to Click and ensure no repeat while holding
+        """T2: index+middle pinch should click once after hold"""
+        pinch_fn = self.make_dist_fn_with_pinch(idx_mid=20)
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_fn)
+        self.assertIsNone(action)
+        # Debounce + hold window passed, action fires once
         self.cf._now_ms = lambda: time.time() * 1000 + DEBOUNCE_TIME_MS + 1
-        mode, action = self.cf.classify([1, 0, 1, 0, 0], self.lm, self.dist_fn)
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_fn)
+        self.assertEqual(action, "click")
         self.assertEqual(mode, "Click")
+        # Holding pinch should not repeat
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_fn)
         self.assertIsNone(action)
 
     def test_t2_click_near_tips_trigger(self):
-        """T2: click gesture is distance-independent in new mapping"""
-        mode, action = self.cf.classify([1, 0, 1, 0, 0], self.lm, self.dist_fn)
-        self.assertEqual(action, "click")  # fires immediately
-        # Debounce mode to "Click"; click_ready now False, so no repeat
-        self.cf._now_ms = lambda: time.time() * 1000 + DEBOUNCE_TIME_MS + 1
-        mode, action = self.cf.classify([1, 0, 1, 0, 0], self.lm, self.dist_fn)
-        self.assertEqual(mode, "Click")
+        """T2: no click when pinch hold time has not elapsed"""
+        pinch_fn = self.make_dist_fn_with_pinch(idx_mid=20)
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_fn)
         self.assertIsNone(action)
+        self.cf._now_ms = lambda: time.time() * 1000 + 50
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_fn)
+        self.assertIsNone(action)
+
+    def test_t2_click_rearms_after_release(self):
+        """T2: releasing pinch should re-arm click trigger"""
+        pinch_on_fn = self.make_dist_fn_with_pinch(idx_mid=20)
+        pinch_off_fn = self.make_dist_fn_with_pinch(idx_mid=80)
+        self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_on_fn)
+        self.cf._now_ms = lambda: time.time() * 1000 + DEBOUNCE_TIME_MS + 1
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_on_fn)
+        self.assertEqual(action, "click")
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_on_fn)
+        self.assertIsNone(action)
+        # release to move and click_ready should be restored
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_off_fn)
+        self.assertIsNone(action)
+        mode, action = self.cf.classify([0, 1, 0, 0, 0], self.lm, self.dist_fn)
+        self.assertTrue(self.cf.click_ready)
+        self.cf._now_ms = lambda: time.time() * 1000 + DEBOUNCE_TIME_MS + 5
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_on_fn)
+        self.assertIsNone(action)
+        self.cf._now_ms = lambda: time.time() * 1000 + DEBOUNCE_TIME_MS + 205
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_on_fn)
+        self.assertEqual(action, "click")
 
     # ── T3: Right Click ────────────────────────────────────────────────
     def test_t3_right_click_mode(self):
-        """T3: [1,1,0,0,0] → RightClick mode"""
-        mode, action = self.call_classify([1, 1, 0, 0, 0])
+        """T3: index+ring pinch gesture → RightClick mode"""
+        pinch_fn = self.make_dist_fn_with_pinch(idx_ring=22)
+        mode, action = self.cf.classify([0, 1, 1, 1, 0], self.lm, pinch_fn)
+        self.assertIsNone(action)
+        self.cf._now_ms = lambda: time.time() * 1000 + DEBOUNCE_TIME_MS + 1
+        mode, action = self.cf.classify([0, 1, 1, 1, 0], self.lm, pinch_fn)
+        self.assertEqual(action, "right_click")
         self.assertEqual(mode, "RightClick")
 
     # ── T4: Drag Mode ──────────────────────────────────────────────────
     def test_t4_drag_start(self):
-        """T4: fist [0,0,0,0,0] → drag_start"""
+        """T4: fist [*,0,0,0,0] → drag_start"""
         mode, action = self.cf.classify([0, 0, 0, 0, 0], self.lm, self.dist_fn)
         self.assertEqual(action, "drag_start")  # fires immediately
         mode, action = self.cf.classify([0, 0, 0, 0, 0], self.lm, self.dist_fn)
@@ -157,62 +205,50 @@ class TestGestureClassifier(unittest.TestCase):
         self.assertEqual(mode, "Drag")
         self.assertEqual(action, "move")
 
-        # Now switch to Move (index+middle only)
-        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, self.dist_fn)
+        # Now switch to Move (index only)
+        mode, action = self.cf.classify([0, 1, 0, 0, 0], self.lm, self.dist_fn)
         self.assertEqual(self.cf.current_mode, "Move")  # detected, not yet stable
         # Advance time to pass debounce
         self.cf._now_ms = lambda: time.time() * 1000 + DEBOUNCE_TIME_MS + 1
-        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, self.dist_fn)
+        mode, action = self.cf.classify([0, 1, 0, 0, 0], self.lm, self.dist_fn)
         self.assertEqual(mode, "Move")
         self.assertEqual(action, "move")
         self.assertFalse(self.cf.drag_active)
 
     # ── T5: Scroll Mode ────────────────────────────────────────────────
     def test_t5_scroll_mode(self):
-        """T5: all fingers up → Scroll mode"""
-        mode, action = self.cf.classify([1, 1, 1, 1, 1], self.lm, self.dist_fn)
+        """T5: [thumb,1,1,1,1] → Scroll mode"""
+        mode, action = self.cf.classify([0, 1, 1, 1, 1], self.lm, self.dist_fn)
         self.cf._now_ms = lambda: time.time() * 1000 + DEBOUNCE_TIME_MS + 1
-        mode, action = self.cf.classify([1, 1, 1, 1, 1], self.lm, self.dist_fn)
+        mode, action = self.cf.classify([0, 1, 1, 1, 1], self.lm, self.dist_fn)
         self.assertEqual(mode, "Scroll")
 
-    def test_t5_scroll_detects_delta(self):
-        """T5: scroll action fires when y-position changes"""
-        # First frame — establish reference
-        self.cf.classify([1, 1, 1, 1, 1], self.lm, self.dist_fn)
-        self.cf._now_ms = lambda: time.time() * 1000 + DEBOUNCE_TIME_MS + 1
+    def test_t5_scroll_uses_center_boundary(self):
+        """T5: scroll direction follows index position vs frame center"""
+        scroll_up_lm = [row[:] for row in self.lm]
+        scroll_down_lm = [row[:] for row in self.lm]
+        scroll_up_lm[8][2] = 120
+        scroll_down_lm[8][2] = FRAME_HEIGHT - 60
 
-        # Second frame — move hand down (higher y)
-        moved_lm = make_lmList(
-            [
-                (320, 420),
-                (280, 340),
-                (250, 270),
-                (220, 210),
-                (190, 160),
-                (300, 320),
-                (260, 240),
-                (240, 180),
-                (220, 130),
-                (330, 300),
-                (310, 210),
-                (305, 150),
-                (300, 100),
-                (360, 320),
-                (370, 240),
-                (380, 190),
-                (385, 150),
-                (390, 340),
-                (410, 280),
-                (420, 240),
-                (425, 210),
-            ]
+        self.cf._now_ms = lambda: 1000
+        self.cf.classify([0, 1, 1, 1, 1], scroll_up_lm, make_distance_fn(scroll_up_lm))
+        self.cf._now_ms = lambda: 1400
+        mode, action_up = self.cf.classify(
+            [0, 1, 1, 1, 1], scroll_up_lm, make_distance_fn(scroll_up_lm)
         )
-        moved_dist_fn = make_distance_fn(moved_lm)
-        mode, action = self.cf.classify([1, 1, 1, 1, 1], moved_lm, moved_dist_fn)
         self.assertEqual(mode, "Scroll")
-        self.assertIsNotNone(action)
-        self.assertEqual(action[0], "scroll")
-        self.assertTrue(isinstance(action[1], (int, float)))
+        self.assertIsNotNone(action_up)
+        self.assertEqual(action_up[0], "scroll")
+        self.assertGreater(action_up[1], 0)
+
+        self.cf._now_ms = lambda: 1800
+        mode, action_down = self.cf.classify(
+            [0, 1, 1, 1, 1], scroll_down_lm, make_distance_fn(scroll_down_lm)
+        )
+        self.assertEqual(mode, "Scroll")
+        self.assertIsNotNone(action_down)
+        self.assertEqual(action_down[0], "scroll")
+        self.assertLess(action_down[1], 0)
 
     # ── T6: Hand Lost ──────────────────────────────────────────────────
     def test_t6_hand_lost_reset(self):
@@ -223,55 +259,74 @@ class TestGestureClassifier(unittest.TestCase):
         self.assertEqual(self.cf.current_mode, "None")
 
     def test_t6_none_fingers_vector(self):
-        """T6: [0,0,0,0,0] fingers → Drag in new mapping"""
-        mode, action = self.call_classify([0, 0, 0, 0, 0])
+        """T6: fist should trigger Drag mode in practical mapping"""
+        mode, action = self.cf.classify([0, 0, 0, 0, 0], self.lm, self.dist_fn)
         self.assertEqual(mode, "Drag")
+        self.assertEqual(action, "drag_start")
 
     # ── T7: Debounce ───────────────────────────────────────────────────
     def test_t7_debounce_no_flip_before_timeout(self):
         """T7: mode should NOT change before debounce time elapses"""
         # Start in Move
-        self.call_classify([0, 1, 1, 0, 0])
+        self.call_classify([0, 1, 0, 0, 0])
 
         # Switch to Click - immediately check, should still show old stable_mode
         self.cf._now_ms = lambda: time.time() * 1000  # reset to now
-        self.cf.classify([1, 0, 1, 0, 0], self.lm, self.dist_fn)
+        self.cf.classify([0, 1, 1, 0, 0], self.lm, self.dist_fn)
         # current_mode changed but stable_mode should still be "Move"
         self.assertEqual(self.cf.current_mode, "Click")
         self.assertEqual(self.cf.stable_mode, "Move")  # not yet debounced
 
         # After debounce, should flip
         self.cf._now_ms = lambda: time.time() * 1000 + DEBOUNCE_TIME_MS + 1
-        self.cf.classify([1, 0, 1, 0, 0], self.lm, self.dist_fn)
+        self.cf.classify(
+            [0, 1, 1, 0, 0],
+            self.lm,
+            self.make_dist_fn_with_pinch(idx_mid=20),
+        )
         self.assertEqual(self.cf.stable_mode, "Click")
 
     # ── T8: No Auto-repeat Click ───────────────────────────────────────
     def test_t8_no_click_repeat(self):
         """T8: holding click gesture should NOT fire click twice"""
-        # First call: click gesture fires
-        mode, action = self.cf.classify([1, 0, 1, 0, 0], self.lm, self.dist_fn)
-        self.assertEqual(action, "click")  # first click fires immediately
-        self.assertFalse(self.cf.click_ready)
+        pinch_on_fn = self.make_dist_fn_with_pinch(idx_mid=20)
+        pinch_off_fn = self.make_dist_fn_with_pinch(idx_mid=80)
+        # First call: no action until hold-time satisfied
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_on_fn)
+        self.assertIsNone(action)
         # Debounce mode — action should be None (click_ready is False)
         self.cf._now_ms = lambda: time.time() * 1000 + DEBOUNCE_TIME_MS + 1
-        mode, action = self.cf.classify([1, 0, 1, 0, 0], self.lm, self.dist_fn)
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_on_fn)
         self.assertEqual(mode, "Click")
+        self.assertEqual(action, "click")
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_on_fn)
         self.assertIsNone(action)  # no repeat
 
         # Second call without releasing — should not fire
-        mode, action = self.cf.classify([1, 0, 1, 0, 0], self.lm, self.dist_fn)
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_on_fn)
         self.assertIsNone(action)  # no repeat
 
         # Now release by switching to a different gesture
-        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, self.dist_fn)
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_off_fn)
+        self.assertIsNone(action)
+        mode, action = self.cf.classify([0, 1, 0, 0, 0], self.lm, self.dist_fn)
         self.cf._now_ms = lambda: time.time() * 1000 + DEBOUNCE_TIME_MS + 1
-        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, self.dist_fn)
+        mode, action = self.cf.classify([0, 1, 0, 0, 0], self.lm, self.dist_fn)
         self.assertTrue(self.cf.click_ready)  # ready again
+
+    def test_t8_click_freezes_movement_temporarily(self):
+        """Click trigger should activate short movement freeze window"""
+        pinch_fn = self.make_dist_fn_with_pinch(idx_mid=20)
+        self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_fn)
+        self.cf._now_ms = lambda: time.time() * 1000 + DEBOUNCE_TIME_MS + 1
+        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, pinch_fn)
+        self.assertEqual(action, "click")
+        self.assertTrue(self.cf.is_movement_frozen())
 
     # ── Edge cases ─────────────────────────────────────────────────────
     def test_invalid_distance_fn_graceful(self):
         """Calling classify with None distance function should return None"""
-        mode, action = self.cf.classify([0, 1, 1, 0, 0], self.lm, None)
+        mode, action = self.cf.classify([0, 1, 0, 0, 0], self.lm, None)
         self.assertEqual(mode, "None")
 
     def test_reset_clears_state(self):
@@ -280,23 +335,30 @@ class TestGestureClassifier(unittest.TestCase):
         self.cf.stable_mode = "Move"
         self.cf.click_ready = False
         self.cf.drag_active = True
-        self.cf.last_scroll_y = 100
+        self.cf.last_scroll_action_ms = 100
+        self.cf.left_pinch_active = True
+        self.cf.right_pinch_active = True
+        self.cf.freeze_until_ms = 1234
         self.cf.reset()
         self.assertEqual(self.cf.current_mode, "None")
         self.assertEqual(self.cf.stable_mode, "None")
         self.assertTrue(self.cf.click_ready)
         self.assertFalse(self.cf.drag_active)
-        self.assertIsNone(self.cf.last_scroll_y)
+        self.assertEqual(self.cf.last_scroll_action_ms, 0)
+        self.assertFalse(self.cf.left_pinch_active)
+        self.assertFalse(self.cf.right_pinch_active)
+        self.assertEqual(self.cf.freeze_until_ms, 0)
 
     def test_all_finger_combos_no_gesture(self):
         """Various unrecognized finger combos → None"""
         unrecognized = [
-            [1, 0, 0, 0, 0],
             [0, 0, 0, 1, 0],
             [0, 0, 0, 0, 1],
-            [1, 1, 0, 0, 0],
+            [1, 0, 1, 0, 0],
+            [1, 0, 0, 1, 1],
         ]
         for fingers in unrecognized:
+            self.cf.reset()
             mode, action = self.cf.classify(fingers, self.lm, self.dist_fn)
             self.cf._now_ms = lambda: time.time() * 1000 + DEBOUNCE_TIME_MS + 1
             mode, action = self.cf.classify(fingers, self.lm, self.dist_fn)

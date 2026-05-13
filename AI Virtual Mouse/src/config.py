@@ -26,20 +26,31 @@ HAND_LOST_GRACE_FRAMES = 4  # Keep last state for a few missed frames
 # Gesture Classification Thresholds
 # =============================================================================
 # Gesture style profile
-GESTURE_STYLE = "legacy"
+GESTURE_STYLE = "practical_no_thumb"
 
 # Optional advanced controls (GfG-style extensions)
 ENABLE_VOLUME_CONTROL = False
 ENABLE_BRIGHTNESS_CONTROL = False
 
-CLICK_THRESHOLD_PX = 40  # Max distance between index(8) and middle(12) tips for click
-DRAG_THRESHOLD_PX = 30  # Max distance between thumb(4) and index(8) tips for drag
+CLICK_THRESHOLD_PX = 40  # Legacy compatibility threshold (older profiles)
+DRAG_THRESHOLD_PX = 30  # Legacy compatibility threshold (older profiles)
 DEBOUNCE_TIME_MS = 300  # Mode must be stable this long before activating
 SCROLL_SENSITIVITY = 2  # Higher = less sensitive scrolling
 SCROLL_DEAD_ZONE_PX = 5  # Minimum y-delta to trigger scroll
-THUMB_SENSITIVITY = 1.80  # 1.0 = normal. Higher = stricter thumb detection (easier to fold close). Range: 0.5-2.0
+SCROLL_CENTER_DEAD_ZONE_PX = 35  # Half-height no-scroll area around camera center line
+SCROLL_STEP_AMOUNT = 2  # Scroll units per trigger
+SCROLL_REPEAT_MS = 120  # Minimum interval between scroll triggers
+THUMB_SENSITIVITY = 1.5  # 1.0 = normal. Higher = stricter thumb detection (easier to fold close). Range: 0.5-2.0
 PINCH_CONTROL_DEAD_ZONE = 6  # Minimum index movement to trigger brightness/volume
 PINCH_CONTROL_SCALE = 2  # Lower = stronger brightness/volume effect
+
+# Pinch-based click hysteresis (practical_no_thumb profile)
+LEFT_CLICK_PINCH_ON_PX = 28   # pinch must be <= this to start left click
+LEFT_CLICK_PINCH_OFF_PX = 38  # pinch must be >= this to re-arm left click
+RIGHT_CLICK_PINCH_ON_PX = 34
+RIGHT_CLICK_PINCH_OFF_PX = 44
+CLICK_HOLD_TIME_MS = 100  # pinch must stay stable this long
+MOVE_FREEZE_AFTER_CLICK_MS = 200  # freeze cursor after click transitions
 
 # =============================================================================
 # Coordinate Mapping & Smoothing

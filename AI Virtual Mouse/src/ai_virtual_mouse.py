@@ -136,7 +136,10 @@ def main():
             if DEBUG_FINGERS:
                 finger_names = ["Thumb", "Index", "Middle", "Ring", "Pinky"]
                 move_patterns = tuple(classifier.profile["move_patterns"])
-                match_move = fingers in move_patterns
+                match_move = any(
+                    classifier._match_pattern(fingers, pattern)
+                    for pattern in move_patterns
+                )
                 status = "MATCH!" if match_move else f"need one of {move_patterns}"
                 dbg_text = f"Fingers: {fingers}  ({'/'.join(f'{n}={v}' for n, v in zip(finger_names, fingers, strict=False))})"
                 cv2.putText(
@@ -171,7 +174,12 @@ def main():
             ix, iy = lmList[8][1], lmList[8][2]
             smooth_x, smooth_y = mapper.process(ix, iy)
 
-        if smooth_x is not None and smooth_y is not None and mode in ("Move", "Drag"):
+        if (
+            smooth_x is not None
+            and smooth_y is not None
+            and mode in ("Move", "Drag")
+            and not classifier.is_movement_frozen()
+        ):
             # Cursor follows index fingertip (landmark 8) only in movement modes.
             controller.execute("move", screen_x=smooth_x, screen_y=smooth_y)
 

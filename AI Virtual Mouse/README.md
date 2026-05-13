@@ -50,21 +50,21 @@ AI Virtual Mouse/
 
 | Gesture | Finger Pattern `[thumb,index,middle,ring,pinky]` | Action |
 | --- | --- | --- |
-| **Move** | `[0,1,1,0,0]` | Cursor movement |
-| **Stop Move** | `[1,1,1,0,0]` | Stop movement instantly |
-| **Left Click** | `[1,0,1,0,0]` | Single left click (edge-triggered) |
-| **Right Click** | `[1,1,0,0,0]` | Single right click (edge-triggered) |
-| **Drag** | `[0,0,0,0,0]` | Hold left mouse button and move |
-| **Scroll** | `[1,1,1,1,1]` | Vertical scroll |
+| **Move** | `[*,1,0,0,0]` | Cursor movement |
+| **Left Click** | `[*,1,1,0,0]` + index-middle pinch | Single left click |
+| **Right Click** | `[*,1,1,1,0]` + index-ring pinch | Single right click |
+| **Drag** | `[*,0,0,0,0]` | Hold left mouse button and move |
+| **Scroll** | `[*,1,1,1,1]` | Up/down scroll using camera center boundary |
 
 **Key capabilities:**
 
 - Real-time 21-landmark hand detection via MediaPipe Tasks API (HandLandmarker)
 - Rule-based gesture classifier — no ML training required, works out-of-box
 - Exponential smoothing with optimized factor (5.0) for jitter-free cursor
+- Practical no-thumb profile with pinch hysteresis and hold-time gating
 - Dynamic screen resolution detection via Autopy
 - Debounce protection (300 ms) for non-move mode switching
-- Instant move/drag response for lower interaction latency
+- Instant move/drag response with post-click movement freeze to reduce drift
 - Edge-triggered click actions (one trigger per gesture entry)
 - Live FPS counter and gesture mode overlay
 - Modular architecture: each module independently testable
@@ -171,11 +171,17 @@ All tunable parameters are in `src/config.py`:
 | Parameter | Default | Description |
 | --- | --- | --- |
 | `SMOOTHING_FACTOR` | 5.0 | Higher = smoother cursor, more lag; grid-search optimal |
-| `CLICK_THRESHOLD_PX` | 40 | Reserved click distance threshold (profile currently uses pattern entry) |
-| `DRAG_THRESHOLD_PX` | 30 | Reserved drag threshold (pattern-based drag is active) |
+| `LEFT_CLICK_PINCH_ON_PX` | 28 | Left click pinch ON threshold (hysteresis entry) |
+| `LEFT_CLICK_PINCH_OFF_PX` | 38 | Left click pinch OFF threshold (hysteresis release) |
+| `RIGHT_CLICK_PINCH_ON_PX` | 34 | Right click pinch ON threshold (hysteresis entry) |
+| `RIGHT_CLICK_PINCH_OFF_PX` | 44 | Right click pinch OFF threshold (hysteresis release) |
+| `CLICK_HOLD_TIME_MS` | 100 | Minimum pinch hold duration to trigger click |
+| `MOVE_FREEZE_AFTER_CLICK_MS` | 200 | Temporary cursor freeze after click trigger |
 | `DEBOUNCE_TIME_MS` | 300 | Min stable gesture duration before activation |
 | `FRAME_REDUCTION` | 100 | Dead-zone margin at frame edges (px) |
-| `SCROLL_SENSITIVITY` | 2 | Scroll speed multiplier |
+| `SCROLL_CENTER_DEAD_ZONE_PX` | 35 | No-scroll zone around camera center line |
+| `SCROLL_STEP_AMOUNT` | 2 | Scroll step per trigger (up/down) |
+| `SCROLL_REPEAT_MS` | 120 | Minimum interval between scroll triggers |
 | `MIN_DETECTION_CONFIDENCE` | 0.5 | Minimum palm detection confidence |
 | `MIN_TRACKING_CONFIDENCE` | 0.5 | Minimum landmark tracking confidence |
 

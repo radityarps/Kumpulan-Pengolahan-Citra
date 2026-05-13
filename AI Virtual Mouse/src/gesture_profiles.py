@@ -15,6 +15,19 @@ GESTURE_PROFILES = {
         "drag_pattern": [0, 0, 0, 0, 0],
         "scroll_pattern": [1, 1, 1, 1, 1],
         "brightness_pattern": [1, 1, 1, 1, 0],
+        "volume_pattern": [1, 0, 1, 1, 1],
+    },
+    # Practical profile for noisy/low-light webcams:
+    # thumb is ignored (None wildcard) to avoid unstable thumb detection.
+    "practical_no_thumb": {
+        "move_patterns": ([None, 1, 0, 0, 0],),
+        "stop_pattern": None,
+        "click_pattern": [None, 1, 1, 0, 0],  # index+middle pinch
+        "right_click_pattern": [None, 1, 1, 1, 0],  # index+ring pinch
+        "drag_pattern": [None, 0, 0, 0, 0],  # fist drag mode
+        "scroll_pattern": [None, 1, 1, 1, 1],
+        "brightness_pattern": [None, 0, 1, 1, 1],
+        "volume_pattern": [None, 1, 1, 0, 1],
     },
 }
 

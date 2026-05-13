@@ -7,6 +7,7 @@ Handles coordinate clamping, drag state tracking, and cleanup.
 """
 
 import time
+import ctypes
 import autopy
 from src.config import CLICK_DELAY
 
@@ -32,11 +33,20 @@ class MouseController:
 
         # Scroll may not be available in some Autopy versions (e.g., 4.0.1)
         self._scroll_available = hasattr(autopy.mouse, "scroll")
+        self._windows_scroll_fallback = hasattr(ctypes, "windll") and hasattr(
+            ctypes.windll, "user32"
+        )
         if not self._scroll_available:
-            print(
-                "[MouseController] WARNING: autopy.mouse.scroll not available. "
-                "Scroll mode will be ignored."
-            )
+            if self._windows_scroll_fallback:
+                print(
+                    "[MouseController] INFO: autopy.mouse.scroll unavailable. "
+                    "Using Windows mouse wheel fallback."
+                )
+            else:
+                print(
+                    "[MouseController] WARNING: autopy.mouse.scroll not available. "
+                    "Scroll mode will be ignored."
+                )
 
     def execute(self, action, screen_x=None, screen_y=None, **kwargs):
         """
@@ -86,13 +96,9 @@ class MouseController:
             autopy.mouse.toggle(button=autopy.mouse.Button.LEFT, down=False)
             self.drag_active = False
 
-        elif (
-            isinstance(action, tuple)
-            and action[0] == "scroll"
-            and self._scroll_available
-        ):
+        elif isinstance(action, tuple) and action[0] == "scroll":
             _scroll_type, amount = action
-            autopy.mouse.scroll(int(amount))
+            self._scroll(int(amount))
 
     def cleanup(self):
         """
@@ -102,3 +108,14 @@ class MouseController:
         if self.drag_active:
             autopy.mouse.toggle(button=autopy.mouse.Button.LEFT, down=False)
             self.drag_active = False
+
+    def _scroll(self, amount):
+        if amount == 0:
+            return
+        if self._scroll_available:
+            autopy.mouse.scroll(int(amount))
+            return
+        if self._windows_scroll_fallback:
+            # Windows wheel delta is multiples of 120.
+            wheel_delta = int(amount) * 120
+            ctypes.windll.user32.mouse_event(0x0800, 0, 0, wheel_delta, 0)
