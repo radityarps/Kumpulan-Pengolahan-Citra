@@ -28,10 +28,6 @@ HAND_LOST_GRACE_FRAMES = 4  # Keep last state for a few missed frames
 # Gesture style profile
 GESTURE_STYLE = "practical_no_thumb"
 
-# Optional advanced controls (GfG-style extensions)
-ENABLE_VOLUME_CONTROL = False
-ENABLE_BRIGHTNESS_CONTROL = False
-
 CLICK_THRESHOLD_PX = 40  # Legacy compatibility threshold (older profiles)
 DRAG_THRESHOLD_PX = 30  # Legacy compatibility threshold (older profiles)
 DEBOUNCE_TIME_MS = 300  # Mode must be stable this long before activating
@@ -41,8 +37,6 @@ SCROLL_CENTER_DEAD_ZONE_PX = 35  # Half-height no-scroll area around camera cent
 SCROLL_STEP_AMOUNT = 2  # Scroll units per trigger
 SCROLL_REPEAT_MS = 120  # Minimum interval between scroll triggers
 THUMB_SENSITIVITY = 1.5  # 1.0 = normal. Higher = stricter thumb detection (easier to fold close). Range: 0.5-2.0
-PINCH_CONTROL_DEAD_ZONE = 6  # Minimum index movement to trigger brightness/volume
-PINCH_CONTROL_SCALE = 2  # Lower = stronger brightness/volume effect
 
 # Pinch-based click hysteresis (practical_no_thumb profile)
 LEFT_CLICK_PINCH_ON_PX = 28   # pinch must be <= this to start left click

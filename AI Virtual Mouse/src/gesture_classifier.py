@@ -12,11 +12,7 @@ from src.config import (
     CLICK_THRESHOLD_PX,
     DEBOUNCE_TIME_MS,
     DRAG_THRESHOLD_PX,
-    ENABLE_BRIGHTNESS_CONTROL,
-    ENABLE_VOLUME_CONTROL,
     GESTURE_STYLE,
-    PINCH_CONTROL_DEAD_ZONE,
-    PINCH_CONTROL_SCALE,
     FRAME_HEIGHT,
     SCROLL_DEAD_ZONE_PX,
     SCROLL_SENSITIVITY,
@@ -49,10 +45,6 @@ class GestureClassifier:
         scroll_step_amount=SCROLL_STEP_AMOUNT,
         scroll_repeat_ms=SCROLL_REPEAT_MS,
         gesture_style=GESTURE_STYLE,
-        enable_volume_control=ENABLE_VOLUME_CONTROL,
-        enable_brightness_control=ENABLE_BRIGHTNESS_CONTROL,
-        pinch_control_dead_zone=PINCH_CONTROL_DEAD_ZONE,
-        pinch_control_scale=PINCH_CONTROL_SCALE,
         left_click_on=LEFT_CLICK_PINCH_ON_PX,
         left_click_off=LEFT_CLICK_PINCH_OFF_PX,
         right_click_on=RIGHT_CLICK_PINCH_ON_PX,
@@ -71,10 +63,6 @@ class GestureClassifier:
         self.scroll_center_y = FRAME_HEIGHT // 2
         self.gesture_style = gesture_style
         self.profile = get_profile(gesture_style)
-        self.enable_volume_control = enable_volume_control
-        self.enable_brightness_control = enable_brightness_control
-        self.pinch_control_dead_zone = pinch_control_dead_zone
-        self.pinch_control_scale = pinch_control_scale
 
         self.left_click_on = left_click_on
         self.left_click_off = left_click_off
@@ -90,8 +78,6 @@ class GestureClassifier:
         self.click_ready = True
         self.drag_active = False
         self.last_scroll_action_ms = 0
-        self.last_control_x = None
-        self.last_control_y = None
 
         self.left_pinch_active = False
         self.right_pinch_active = False
@@ -170,8 +156,6 @@ class GestureClassifier:
         if stop_pattern is not None and self._match_pattern(fingers, stop_pattern):
             self._clear_click_states()
             self.last_scroll_action_ms = 0
-            self.last_control_x = None
-            self.last_control_y = None
             if self.drag_active:
                 self.drag_active = False
                 return "StopMove", "drag_end"
@@ -203,40 +187,8 @@ class GestureClassifier:
             self._clear_click_states()
             return "Scroll", self._scroll_from_center(lmList, now_ms)
 
-        if self.enable_brightness_control and self._match_pattern(
-            fingers, self.profile["brightness_pattern"]
-        ):
-            self._clear_click_states()
-            action = None
-            if len(lmList) > 8:
-                curr_x = lmList[8][1]
-                if self.last_control_x is not None:
-                    delta_x = curr_x - self.last_control_x
-                    if abs(delta_x) > self.pinch_control_dead_zone:
-                        step = int(delta_x / max(1, self.pinch_control_scale))
-                        action = ("brightness", step)
-                self.last_control_x = curr_x
-            return "Brightness", action
-
-        if self.enable_volume_control and self._match_pattern(
-            fingers, self.profile["volume_pattern"]
-        ):
-            self._clear_click_states()
-            action = None
-            if len(lmList) > 8:
-                curr_y = lmList[8][2]
-                if self.last_control_y is not None:
-                    delta_y = self.last_control_y - curr_y
-                    if abs(delta_y) > self.pinch_control_dead_zone:
-                        step = int(delta_y / max(1, self.pinch_control_scale))
-                        action = ("volume", step)
-                self.last_control_y = curr_y
-            return "Volume", action
-
         self._clear_click_states()
         self.last_scroll_action_ms = 0
-        self.last_control_x = None
-        self.last_control_y = None
         if self.drag_active:
             self.drag_active = False
             return "None", "drag_end"
@@ -346,8 +298,6 @@ class GestureClassifier:
         self.click_ready = True
         self.drag_active = False
         self.last_scroll_action_ms = 0
-        self.last_control_x = None
-        self.last_control_y = None
         self.left_pinch_active = False
         self.right_pinch_active = False
         self.left_pinch_hold_start_ms = None

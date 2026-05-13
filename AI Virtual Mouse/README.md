@@ -32,7 +32,6 @@ AI Virtual Mouse/
 │   ├── gesture_profiles.py            ← Gesture pattern profile map
 │   ├── coordinate_mapper.py           ← Camera-to-screen mapping + smoothing
 │   ├── mouse_controller.py            ← Autopy mouse control wrapper
-│   ├── system_controls.py             ← Optional brightness/volume controls
 │   ├── utils.py                       ← FPS counter & overlay helpers
 │   └── hand_landmarker.task           ← MediaPipe model file
 ├── tests/                             ← Automated tests

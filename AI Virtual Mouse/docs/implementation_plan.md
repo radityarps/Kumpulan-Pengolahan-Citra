@@ -44,7 +44,6 @@ Berdasarkan PRD §10.1, **Minimal Viable Product** adalah:
 **Fitur Fase 2 (Stretch Goals — PRD §10.2):**
 
 - Right-click, Drag, Scroll
-- Volume control / brightness (bonus gesture)
 - GUI control panel (opsional ekstra)
 
 ---

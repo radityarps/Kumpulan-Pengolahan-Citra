@@ -22,7 +22,6 @@ from src.hand_tracking_module import HandDetector
 from src.gesture_classifier import GestureClassifier
 from src.coordinate_mapper import CoordinateMapper
 from src.mouse_controller import MouseController
-from src.system_controls import SystemController
 from src.config import (
     FRAME_WIDTH,
     FRAME_HEIGHT,
@@ -41,8 +40,6 @@ from src.config import (
     CLICK_DELAY,
     LANDMARK_VISIBLE_DEFAULT,
     DEBUG_ACTION,
-    ENABLE_BRIGHTNESS_CONTROL,
-    ENABLE_VOLUME_CONTROL,
     DEBUG_FINGERS,
     COLOR_GREEN,
     HAND_LOST_GRACE_FRAMES,
@@ -81,7 +78,6 @@ def main():
         smoothing_factor=SMOOTHING_FACTOR,
     )
     controller = MouseController(click_delay=CLICK_DELAY)
-    system_controller = SystemController()
 
     # ---- State ----
     prev_time = time.time()
@@ -93,11 +89,6 @@ def main():
     print("  AI Virtual Mouse")
     print("  Controls: q=quit, l=toggle landmarks")
     print(f"  Gesture style: {GESTURE_STYLE}")
-    print(
-        "  Optional controls: "
-        f"volume={'ON' if ENABLE_VOLUME_CONTROL and system_controller.volume_available else 'OFF'}, "
-        f"brightness={'ON' if ENABLE_BRIGHTNESS_CONTROL and system_controller.brightness_available else 'OFF'}"
-    )
     print(f"  Screen: {mapper.screen_width}x{mapper.screen_height}")
     print("=" * 50)
 
@@ -201,16 +192,6 @@ def main():
         if isinstance(action, tuple) and action[0] == "scroll":
             _scroll_type, scroll_amount = action
             controller.execute(("scroll", scroll_amount))
-
-        if isinstance(action, tuple) and action[0] == "brightness":
-            _kind, delta = action
-            if ENABLE_BRIGHTNESS_CONTROL:
-                system_controller.adjust_brightness(delta)
-
-        if isinstance(action, tuple) and action[0] == "volume":
-            _kind, delta = action
-            if ENABLE_VOLUME_CONTROL:
-                system_controller.adjust_volume(delta)
 
         # 5. UI overlay
         curr_time = time.time()
