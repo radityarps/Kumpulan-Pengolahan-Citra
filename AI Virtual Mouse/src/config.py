@@ -53,6 +53,11 @@ FRAME_REDUCTION = 100  # Dead-zone margin at frame edges (pixels)
 SMOOTHING_FACTOR = 5.0  # Higher = smoother but more lag; grid search optimal = 5
 CLICK_DELAY = 0.1  # Seconds to sleep after click (prevents double-click)
 
+# Drag mode uses relative movement from anchor point to prevent cursor teleportation
+# when switching from Move to Drag gesture. Adjust sensitivity if drag feels
+# too slow or too fast compared to Move mode.
+DRAG_SENSITIVITY = 1.0  # Multiplier for drag delta (1.0 = same as Move mode)
+
 # =============================================================================
 # UI / Display
 # =============================================================================

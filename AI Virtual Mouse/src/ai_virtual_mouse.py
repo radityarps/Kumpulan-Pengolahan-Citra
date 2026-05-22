@@ -18,6 +18,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import cv2
+import autopy
 from src.hand_tracking_module import HandDetector
 from src.gesture_classifier import GestureClassifier
 from src.coordinate_mapper import CoordinateMapper
@@ -156,14 +157,38 @@ def main():
             if hand_lost_frames >= HAND_LOST_GRACE_FRAMES:
                 classifier.reset()
                 mapper.reset_smoothing()
+                # Release drag if hand was lost during active drag
+                if controller.drag_active:
+                    controller.execute("drag_end")
 
-        # 4. Coordinate mapping + mouse control
+        # 4. Drag anchor management (must happen BEFORE coordinate processing
+        #    so the current frame uses relative positioning, not absolute).
+        if action == "drag_start":
+            if lmList and len(lmList) > 8:
+                # Anchor cursor at its current screen position, not finger position.
+                # This prevents the cursor from teleporting to the finger when
+                # the user switches from Move to Drag gesture.
+                cur_x, cur_y = autopy.mouse.location()
+                mapper.set_drag_anchor(lmList[8][1], lmList[8][2], cur_x, cur_y)
+        elif action == "drag_end":
+            mapper.clear_drag_anchor()
+
+        # Also clear drag anchor if hand was lost (prevents stuck drag state)
+        if not lmList and mapper.drag_anchor_cam is not None:
+            mapper.clear_drag_anchor()
+
+        # 5. Coordinate mapping + mouse control
         # Keep smoothing state updated for all detected-hand modes to prevent
         # large cursor jumps when transitioning back to Move/Drag.
         smooth_x, smooth_y = None, None
         if lmList and len(lmList) > 8:
             ix, iy = lmList[8][1], lmList[8][2]
-            smooth_x, smooth_y = mapper.process(ix, iy)
+            if mode == "Drag" and mapper.drag_anchor_cam is not None:
+                # Drag: relative movement from anchor (cursor stays near
+                # where drag started, not where finger is pointing).
+                smooth_x, smooth_y = mapper.process_drag(ix, iy)
+            else:
+                smooth_x, smooth_y = mapper.process(ix, iy)
 
         if (
             smooth_x is not None

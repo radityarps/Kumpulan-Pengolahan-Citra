@@ -6,8 +6,13 @@ Reports min, max, mean, median, and 95th percentile FPS.
 Run: python tests/test_benchmark.py
 """
 
+import os
+import sys
 import statistics
 import time
+
+# Enable running as `python tests/test_benchmark.py` from project root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import cv2
 

@@ -4,7 +4,12 @@ Runs a short real-world test without moving the physical mouse.
 Uses a mock controller to log actions instead of executing them.
 """
 
+import os
+import sys
 import time
+
+# Enable running as `python tests/test_smoke.py` from project root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import cv2
 

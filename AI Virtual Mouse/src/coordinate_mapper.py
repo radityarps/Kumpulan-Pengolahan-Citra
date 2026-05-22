@@ -13,6 +13,7 @@ from src.config import (
     FRAME_HEIGHT,
     FRAME_REDUCTION,
     SMOOTHING_FACTOR,
+    DRAG_SENSITIVITY,
 )
 
 
@@ -31,6 +32,7 @@ class CoordinateMapper:
         frame_height=FRAME_HEIGHT,
         frame_reduction=FRAME_REDUCTION,
         smoothing_factor=SMOOTHING_FACTOR,
+        drag_sensitivity=DRAG_SENSITIVITY,
     ):
         """
         Initialize mapper with frame dimensions and smoothing parameters.
@@ -44,11 +46,14 @@ class CoordinateMapper:
             smoothing_factor (float): Exponential smoothing weight.
                                       Higher = smoother but more lag.
                                       Lower = responsive but jittery.
+            drag_sensitivity (float): Multiplier for drag delta.
+                                      1.0 = same sensitivity as Move mode.
         """
         self.frame_width = frame_width
         self.frame_height = frame_height
         self.frame_reduction = frame_reduction
         self.smoothing_factor = smoothing_factor
+        self.drag_sensitivity = drag_sensitivity
 
         # Auto-detect screen dimensions
         self.screen_width, self.screen_height = autopy.screen.size()
@@ -57,6 +62,10 @@ class CoordinateMapper:
         self.smooth_x = 0.0
         self.smooth_y = 0.0
         self.initialized = False
+
+        # Drag relative-movement anchor (camera + screen space)
+        self.drag_anchor_cam = None   # (cx, cy) where finger was when drag started
+        self.drag_anchor_screen = None  # (sx, sy) where cursor was when drag started
 
     def map_to_screen(self, cx, cy):
         """
@@ -119,6 +128,65 @@ class CoordinateMapper:
         will initialize directly to the raw value.
         """
         self.initialized = False
+
+    def set_drag_anchor(self, cam_x, cam_y, screen_x, screen_y):
+        """
+        Set drag anchor for relative cursor movement.
+
+        Records the finger camera position and cursor screen position
+        at the moment drag begins. During drag, cursor moves by the delta
+        of finger movement from this anchor, preventing cursor teleportation
+        when switching from Move to Drag mode.
+
+        Args:
+            cam_x (int): Finger x-coordinate in camera space.
+            cam_y (int): Finger y-coordinate in camera space.
+            screen_x (float): Current cursor x-coordinate on screen.
+            screen_y (float): Current cursor y-coordinate on screen.
+        """
+        self.drag_anchor_cam = (int(cam_x), int(cam_y))
+        self.drag_anchor_screen = (float(screen_x), float(screen_y))
+        # Reset smoothing so next process_drag starts from anchor position
+        self.reset_smoothing()
+
+    def clear_drag_anchor(self):
+        """Clear drag anchor state. Call when drag ends or hand is lost."""
+        self.drag_anchor_cam = None
+        self.drag_anchor_screen = None
+
+    def process_drag(self, cx, cy):
+        """
+        Compute screen position relative to drag anchor.
+
+        Instead of mapping finger to absolute screen position,
+        maps finger delta from anchor + applies smoothing.
+
+        Args:
+            cx (int): Current finger x-coordinate in camera space.
+            cy (int): Current finger y-coordinate in camera space.
+
+        Returns:
+            tuple[float, float]: (screen_x, screen_y) smoothed relative coordinates.
+        """
+        if self.drag_anchor_cam is None:
+            # Fallback to absolute mapping if no anchor set
+            return self.process(cx, cy)
+
+        anchor_cx, anchor_cy = self.drag_anchor_cam
+        anchor_sx, anchor_sy = self.drag_anchor_screen
+
+        cam_dx = cx - anchor_cx
+        cam_dy = cy - anchor_cy
+
+        # Scale factors: convert camera-pixel delta to screen-pixel delta.
+        # Uses same frame_reduction margins as map_to_screen() for consistency.
+        scale_x = self.screen_width / (self.frame_width - 2 * self.frame_reduction)
+        scale_y = self.screen_height / (self.frame_height - 2 * self.frame_reduction)
+
+        raw_sx = anchor_sx + cam_dx * scale_x * self.drag_sensitivity
+        raw_sy = anchor_sy + cam_dy * scale_y * self.drag_sensitivity
+
+        return self.smooth(raw_sx, raw_sy)
 
     def process(self, cx, cy):
         """
