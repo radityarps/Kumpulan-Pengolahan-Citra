@@ -81,6 +81,23 @@ class HandDetector:
         detection_con=MIN_DETECTION_CONFIDENCE,
         track_con=MIN_TRACKING_CONFIDENCE,
     ):
+        """
+        Initialize MediaPipe HandLandmarker.
+
+        Creates a Tasks API HandLandmarker with IMAGE mode (single-frame).
+        Stores tip_ids for finger detection and initializes internal state.
+
+        Args:
+            mode: Unused parameter maintained for backward compatibility
+                with video version interface.
+            max_hands: Maximum number of hands to detect simultaneously.
+            detection_con: Minimum confidence for hand detection (0.0-1.0).
+            track_con: Minimum confidence for landmark tracking (0.0-1.0).
+
+        Side effects:
+            Loads the hand_landmarker.task model from disk.
+            Initializes self.tip_ids, self.lmList, self.detection_result.
+        """
         self.max_hands = max_hands
         self.detection_con = detection_con
         self.track_con = track_con
@@ -181,6 +198,33 @@ class HandDetector:
     def fingersUp(self):
         """
         Determine which fingers are extended.
+
+        ╔══════════════════════════════════════════════════════════════╗
+        ║  MASALAH #3 / Slide 7: Jempol Unreliable
+        ╠══════════════════════════════════════════════════════════════╣
+        ║  BEFORE (Tutorial — Murtaza's Workshop):
+        ║    # Deteksi jempol pakai x-coordinate comparison:
+        ║    if lmList[4][1] > lmList[3][1]:  # tip_x > ip_x
+        ║        fingers[0] = 1  # jempol naik
+        ║
+        ║    Masalah:
+        ║    1. Hanya berfungsi untuk TANGAN KANAN telapak ke kamera.
+        ║    2. Tangan kiri → deteksi terbalik.
+        ║    3. Tangan diputar sedikit → unreliable.
+        ║    4. Butuh handedness detection (model tambahan).
+        ║
+        ║  AFTER (Fix × 2):
+        ║    1. Deteksi jempol pakai distance-based (MCP→tip distance),
+        ║       lebih robust terhadap orientasi tangan.
+        ║    2. Semua gesture pattern abaikan jempol dengan None
+        ║       wildcard. Classifier hanya lihat 4 jari.
+        ║
+        ║  SEBAB: Distance-based detection (Euclidean distance
+        ║    antara MCP joint dan tip) tidak sensitif terhadap
+        ║    handedness. Tapi tetap ada false positive.
+        ║    Solusi kombinasi: distance detection + ignore di
+        ║    gesture pattern = paling pragmatis.
+        ╚══════════════════════════════════════════════════════════════╝
 
         Returns:
             list[int]: [thumb, index, middle, ring, pinky]

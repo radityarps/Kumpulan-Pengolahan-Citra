@@ -63,6 +63,11 @@ Ini bug serius karena scroll itu gestur paling sering dipakai selain move.
 
 Solusinya: saya bypass Autopy dan panggil langsung Windows API lewat `ctypes`. Jadi kita kirim event `MOUSEEVENTF_WHEEL` langsung ke sistem operasi. Ini Windows-only — tapi karena development di Windows, cukup untuk sekarang.
 
+> 📍 **Lokasi kode:**
+> - `video-version/AIVirtualMouse.py` → `_scroll()` baris ~54: fallback ctypes Windows API
+> - `src/mouse_controller.py` → `_scroll()` baris ~122: implementasi production dengan try/except
+> - Dokumentasi inline: blok `MASALAH #1 / Slide 5` di kedua file
+
 ---
 
 ## Slide 6 — Masalah #2: Kursor Kebalik
@@ -72,6 +77,11 @@ Masalah kedua lebih subtle: kursor geraknya kebalik.
 Saya gerakin tangan ke kanan, kursor malah ke kiri. Setelah debugging, ketemu penyebabnya: webcam itu mirror. Gambar yang kita lihat di layar itu kebalikan dari aslinya. Tutorial pakai rumus `wScr - clocX` buat nge-balikin — tapi di setup saya, itu malah bikin double-inversion.
 
 Solusinya: `cv2.flip(img, 1)`. Satu baris. Mirror gambar dari webcam, terus koordinat langsung dipakai apa adanya — nggak perlu di-invert lagi. Hasilnya: tangan kiri = layar kiri. Natural.
+
+> 📍 **Lokasi kode:**
+> - `video-version/AIVirtualMouse.py` → `main()` PHASE 1: setelah `cap.read()`, baris `cv2.flip(img, 1)`
+> - `src/ai_virtual_mouse.py` → `main()` PHASE 1: blok `MASALAH #2 / Slide 6`
+> - Dokumentasi inline: blok `╔ MASALAH #2 / Slide 6` di kedua file
 
 ---
 
@@ -85,6 +95,12 @@ Begitu kita pakai tangan kiri — atau tangan diputar sedikit — deteksinya nga
 
 Solusi paling pragmatis: abaikan jempol. Di semua gesture pattern, jempol kita kasih nilai `None` — alias wildcard. Jadi classifier cuma lihat 4 jari: telunjuk, tengah, manis, kelingking. Solusi simpel, tapi efektif.
 
+> 📍 **Lokasi kode:**
+> - `video-version/AIVirtualMouse.py` → `_match_pattern()` baris ~84: logika None wildcard
+> - `src/hand_tracking_module.py` → `fingersUp()` baris ~199: deteksi jempol distance-based
+> - `src/gesture_profiles.py` → profile `practical_no_thumb`: `[None, ...]` di setiap pattern
+> - Dokumentasi inline: blok `MASALAH #3 / Slide 7` di ketiga file
+
 ---
 
 ## Slide 8 — Gesture Kurang Lengkap
@@ -97,11 +113,32 @@ Saya tambah 2 gesture lagi dan perbaiki yang ada: Drag (buat drag-and-drop file)
 
 Sekarang total 6 gesture: Move, Left Click, Right Click, Drag, Scroll — dengan gesture yang lebih natural.
 
+> 📍 **Lokasi kode:**
+> - `video-version/AIVirtualMouse.py` → `main()` gesture blocks:
+>   - Drag: `[*,0,0,0,0]` (kepalan) + anchor-based relative movement
+>   - Right Click: `[*,1,1,1,0]` (3 jari) + pinch 8→16 < 34px
+>   - Scroll: `[*,1,1,1,1]` (4 jari) + camera center boundary
+> - `src/gesture_profiles.py` → profile `practical_no_thumb`:
+>   - `drag_pattern: [None, 0, 0, 0, 0]`
+>   - `right_click_pattern: [None, 1, 1, 1, 0]`
+>   - `scroll_pattern: [None, 1, 1, 1, 1]`
+> - Dokumentasi inline: blok `MASALAH #4 / Slide 8` di video-version
+
 ---
 
 ## Slide 9 — Rangkuman Fine-Tuning
 
 Jadi total ada 8 perbaikan di fase fine-tuning ini: scroll beneran, kamera mirror, jempol diabaikan, right click diperbaiki, drag ditambahin, click logic dari spam jadi edge-triggered, threshold dituning (28px buat click, 34px buat right click), dan scroll pakai camera center boundary.
+
+> 📍 **Lokasi kode (8 perbaikan):**
+> 1. Scroll → `video-version/AIVirtualMouse.py::_scroll()` + `src/mouse_controller.py::_scroll()`
+> 2. Mirror → `video-version/AIVirtualMouse.py` + `src/ai_virtual_mouse.py` (PHASE 1: `cv2.flip`)
+> 3. Jempol → `src/hand_tracking_module.py::fingersUp()` + `src/gesture_profiles.py` + `_match_pattern()`
+> 4. Right Click 5→3 jari → `video-version/AIVirtualMouse.py` RC block + `src/gesture_profiles.py::right_click_pattern`
+> 5. Drag (baru) → `video-version/AIVirtualMouse.py` Drag block + `src/gesture_profiles.py::drag_pattern`
+> 6. Edge-triggered click → `video-version/AIVirtualMouse.py` LC block (`click_ready` flag)
+> 7. Threshold → `video-version/config.py` (`LEFT_CLICK_PINCH_PX=28`, `RIGHT_CLICK_PINCH_PX=34`)
+> 8. Scroll center boundary → `video-version/AIVirtualMouse.py` Scroll block (dead zone ±35px)
 
 Setelah semua perbaikan ini, kode udah jalan lebih baik. Gesture lebih lengkap, lebih natural. Saya pikir: "OK, selesai."
 
@@ -119,6 +156,15 @@ Atau: pas lagi klik, setiap frame nge-klik lagi dan lagi. Spam click. Karena sat
 
 Semua masalah ini bukan salah gesture-nya. Bukan salah kameranya. Ini salah struktur kodenya.
 
+> 📍 **Lokasi kode (BEFORE — video version):**
+> - `video-version/AIVirtualMouse.py` → main loop: tidak ada state management
+>   - Drag: langsung `if _match_pattern(fingers, [None,0,0,0,0])` tanpa hold-time
+>   - Click: langsung `if length < 28: autopy.mouse.click()` tanpa edge-trigger
+>   - Mode: langsung `if-elif` chain, flicker 1 frame langsung ganti
+> 📍 **Lokasi kode (AFTER — main version):**
+> - `src/gesture_classifier.py` → semua state machine logic (detail di Slide 15)
+> - `src/ai_virtual_mouse.py` → hand-lost grace di main loop
+
 ---
 
 ## Slide 11 — Akar Masalah: Nggak Ada "State"
@@ -132,6 +178,13 @@ Kode nggak ingat apa yang terjadi di frame sebelumnya. Nggak ada memori. Nggak a
 
 Solusinya butuh tiga hal: debounce (harus stabil beberapa frame dulu sebelum ganti gesture), hysteresis (batas buat ON beda sama batas OFF, jadi nggak bolak-balik di threshold), dan state machine (ingat gesture sebelumnya, tahu konteks transisinya).
 
+> 📍 **Lokasi kode:**
+> - `src/gesture_classifier.py` → class `GestureClassifier`: semua state machine logic
+>   - Debounce 300ms: method `classify()` → `_debounce_stable_mode()`
+>   - Hysteresis ON≠OFF: method `_handle_left_click()` → `ON_PX=28` vs `OFF_PX=38`
+>   - State memory: attributes `current_mode`, `stable_mode`, `click_ready`, `drag_active`
+> - Dokumentasi inline: blok `MASALAH #5, #6, #8` di class docstring
+
 ---
 
 ## Slide 12 — Plus: Nggak Bisa Dites
@@ -144,6 +197,13 @@ Mau ganti threshold? Edit kode, tes manual sambil liat webcam. Mau yakin gesture
 
 Ini bukan cuma masalah kenyamanan ngoding. Ini masalah correctness. Saya sebagai developer nggak bisa buktikan kode saya benar tanpa tes.
 
+> 📍 **Lokasi kode (BEFORE):**
+> - `video-version/AIVirtualMouse.py` → 1 file, ~400 baris, semua logic bercampur
+> 📍 **Lokasi kode (AFTER — modular):**
+> - `src/` → 8 modul terisolasi (daftar lengkap di Slide 14)
+> - `tests/` → 33 unit tests (test_smoke.py, test_gestures.py, test_drag.py, dll)
+> - Dokumentasi inline: blok `MASALAH #7 / Slide 12-13` di `src/ai_virtual_mouse.py`
+
 ---
 
 ## Slide 13 — Insight
@@ -155,6 +215,11 @@ Di titik ini, saya sadar:
 Kode yang saya tulis — walaupun gesture-nya udah diperbaiki — arsitekturnya salah. Single-loop monolithic nggak scalable, nggak testable, nggak reliable.
 
 Butuh rewrite total. Pisahin tanggung jawab ke modul-modul kecil.
+
+> 📍 **Lokasi kode (AFTER):**
+> - Semua file di `src/` — hasil rewrite modular
+> - `src/ai_virtual_mouse.py` → orchestrator tipis (~150 baris main loop saja)
+> - Dokumentasi inline: blok `MASALAH #7` di module docstring
 
 ---
 
@@ -174,6 +239,13 @@ Empat modul inti:
 
 Masing-masing modul terisolasi. Bisa di-test sendiri-sendiri.
 
+> 📍 **Lokasi kode:**
+> - `src/hand_tracking_module.py` (273 baris) → class `HandDetector`: `findHands()`, `findPosition()`, `fingersUp()`
+> - `src/gesture_classifier.py` (460 baris) → class `GestureClassifier`: `classify()`, `_handle_left_click()`, `reset()`
+> - `src/coordinate_mapper.py` (205 baris) → class `CoordinateMapper`: `process()`, `process_drag()`, `smooth()`
+> - `src/mouse_controller.py` (150 baris) → class `MouseController`: `execute()`, `_scroll()`, `cleanup()`
+> - `src/ai_virtual_mouse.py` (380 baris) → fungsi `main()`: orchestrator, PHASE 1-7 loop
+
 ---
 
 ## Slide 15 — GestureClassifier Deep Dive
@@ -192,6 +264,14 @@ Yang paling signifikan perubahannya ada di GestureClassifier. Bukan cuma if-else
 
 Ini semua bikin gesture recognition stabil. Bukan cuma "deteksi bener", tapi "transisi antar gesture mulus".
 
+> 📍 **Lokasi kode:**
+> - `src/gesture_classifier.py` → class docstring: blok `MASALAH #5, #6, #8`
+>   - Debounce 300ms: `_debounce_stable_mode()` — bandingkan `now_ms` dengan `mode_change_ms + 300`
+>   - Hysteresis ON≠OFF: `_handle_left_click()` — `LEFT_CLICK_PINCH_ON_PX=28` vs `LEFT_CLICK_PINCH_OFF_PX=38`
+>   - Hold-time 100ms: `_handle_left_click()` — `pinch_hold_start_ms + CLICK_HOLD_TIME_MS`
+>   - Post-click freeze 200ms: `_freeze_movement()` — set `freeze_until_ms = now_ms + 200`
+> - `src/ai_virtual_mouse.py` → `main()`: hand-lost grace — counter `hand_lost_frames >= HAND_LOST_GRACE_FRAMES`
+
 ---
 
 ## Slide 16 — Hasil Akhir
@@ -207,6 +287,12 @@ Misal: "GestureClassifier ngasih mode salah?" → run `test_gesture_classifier.p
 
 Ini perbedaan fundamental antara kode yang "jalan" dan kode yang "benar dan terverifikasi".
 
+> 📍 **Lokasi kode:**
+> - `src/` → 8 modul hasil rewrite (daftar di Slide 14)
+> - `tests/` → 33 unit tests
+> - `video-version/` → 3 file referensi (versi sederhana, tanpa state management)
+> - `presentasi/` → 16 file dokumentasi (.md), termasuk script ini
+
 ---
 
 ## Slide 17 — Yang Saya Pelajari
@@ -218,6 +304,11 @@ Tiga lesson utama dari proyek ini:
 **Kedua: Struktur kode = UX juga.** User nggak lihat kode. Tapi kualitas UX — drag stabil, click nggak spam — langsung dipengaruhi struktur kode. Debounce dan hysteresis bukan "nice to have", tapi kebutuhan dasar untuk gesture recognition yang reliable. Dan itu cuma bisa diimplementasi dengan benar kalau arsitekturnya mendukung.
 
 **Ketiga: Library bisa mati kapan aja.** MediaPipe Solutions API — yang dipakai di tutorial — dihapus total di versi 0.10.30. Saya harus migrasi ke Tasks API. Ini realita di software engineering: API deprecation is real. Kita harus siap adaptasi.
+
+> 📍 **Lokasi kode:**
+> - `video-version/HandTrackingModule.py` → class `HandDetector`: internal pakai Tasks API (`HandLandmarker.create_from_options()`)
+> - `src/hand_tracking_module.py` → sama: Tasks API, tidak ada import `mp.solutions`
+> - `requirements.txt` → `mediapipe>=0.10.30` (hanya Tasks API yang tersedia di PyPI)
 
 ---
 

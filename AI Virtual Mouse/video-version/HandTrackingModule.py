@@ -68,8 +68,20 @@ class HandDetector:
 
     def findHands(self, img, draw=True):
         """
-        Detect hands in a BGR frame. Draw landmarks if requested.
-        Same signature and behavior as the video's HandTrackingModule.
+        Detect hands in a BGR frame and optionally draw landmarks.
+
+        Converts BGR to contiguous RGB (Tasks API requirement), runs
+        HandLandmarker.detect(), and draws landmark connections if draw=True.
+
+        Args:
+            img (numpy.ndarray): BGR image from webcam (shape: H×W×3).
+            draw (bool): If True, overlay hand skeleton on the image.
+
+        Returns:
+            numpy.ndarray: Input image with or without landmark overlay.
+
+        Side effects:
+            Sets self.detection_result for later use by findPosition().
         """
         # Convert BGR to RGB with contiguous array (Tasks API requirement)
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -88,10 +100,28 @@ class HandDetector:
 
     def findPosition(self, img, hand_no=0, draw=True):
         """
-        Extract landmark pixel coords and bounding box.
-        Returns (lmList, bbox) — EXACTLY same format as the video.
-        lmList: [[id, cx, cy], ...]
-        bbox: (xmin, ymin, xmax, ymax) or (0, 0, 0, 0) if no hand
+        Extract landmark pixel coordinates and bounding box.
+
+        Converts MediaPipe normalized coordinates (0.0–1.0) to pixel
+        coordinates using image dimensions. Computes bounding box that
+        encloses all 21 landmarks with a 20px margin.
+
+        Args:
+            img (numpy.ndarray): BGR image (used for dimensions and drawing).
+            hand_no (int): Index of the hand to extract (0 = first hand).
+                Only used when max_hands > 1.
+            draw (bool): If True, draw landmark circles and bounding box.
+
+        Returns:
+            tuple:
+                - lmList (list): [[id, cx, cy], ...] for all 21 landmarks.
+                  id: 0–20 (0=wrist, 4=thumb tip, 8=index tip, etc.).
+                  cx, cy: pixel coordinates.
+                - bbox (tuple): (xmin, ymin, xmax, ymax) or (0,0,0,0) if
+                  no hand detected.
+
+        Side effects:
+            Sets self.lmList for use by fingersUp() and findDistance().
         """
         self.lmList = []
         x_list = []
@@ -133,11 +163,27 @@ class HandDetector:
 
     def fingersUp(self):
         """
-        Return binary vector [thumb, index, middle, ring, pinky].
-        Thumb: x-coordinate comparison (tip[4] vs IP[3]) — handedness-dependent.
-        Other fingers: y-coordinate comparison (tip vs PIP).
+        Determine which fingers are extended (pointing up).
 
-        EXACTLY matches the video's algorithm.
+        Detection algorithm (matches tutorial exactly):
+        - Thumb: Compare x-coordinates of tip (landmark 4) and IP joint
+          (landmark 3). If tip.x > IP.x, thumb is "up". This only works
+          reliably for the right hand facing the camera.
+        - Other 4 fingers: Compare y-coordinates of tip and PIP joint
+          (landmark 2 levels below tip). If tip.y < PIP.y, finger is "up"
+          (because y=0 is at the top of the image).
+
+        Requires findPosition() to be called first (populates self.lmList).
+
+        Returns:
+            list[int]: [thumb, index, middle, ring, pinky]
+                1 = extended (up), 0 = folded (down).
+                Returns [0,0,0,0,0] if no landmarks available.
+
+        Note:
+            Thumb detection is handedness-dependent. In gesture pattern
+            matching, thumb is typically ignored (None wildcard) to avoid
+            this limitation.
         """
         fingers = []
 
@@ -163,7 +209,24 @@ class HandDetector:
     def findDistance(self, p1, p2, img=None, draw=True, r=15, t=3):
         """
         Compute Euclidean distance between two landmarks.
-        Returns (length, img, [x1, y1, x2, y2, cx, cy]) — same as video.
+
+        Uses math.hypot(dx, dy) for numerical stability. Optionally draws
+        a line between the two points and circles at endpoints + midpoint.
+
+        Args:
+            p1 (int): Landmark ID of first point (e.g., 8 = index tip).
+            p2 (int): Landmark ID of second point (e.g., 12 = middle tip).
+            img (numpy.ndarray | None): Image to draw on (can be None).
+            draw (bool): If True and img is provided, draw line and circles.
+            r (int): Radius of endpoint circles in pixels.
+            t (int): Thickness of the connecting line in pixels.
+
+        Returns:
+            tuple:
+                - length (float): Euclidean distance in pixels.
+                - img (numpy.ndarray): Image with or without overlay.
+                - line_info (list): [x1, y1, x2, y2, cx, cy] midpoint info.
+                  Returns all zeros if no landmarks available.
         """
         if len(self.lmList) == 0:
             return 0, img, [0, 0, 0, 0, 0, 0]
@@ -182,7 +245,18 @@ class HandDetector:
         return length, img, [x1, y1, x2, y2, cx, cy]
 
     def _draw_landmarks(self, img, hand_landmarks):
-        """Draw landmark connections — replaces mp.solutions.drawing_utils."""
+        """
+        Draw hand skeleton (connections between landmarks).
+
+        Replaces the deprecated mp.solutions.drawing_utils.draw_landmarks().
+        Draws 21 cyan lines between connected landmarks using the standard
+        MediaPipe HAND_CONNECTIONS topology.
+
+        Args:
+            img (numpy.ndarray): BGR image to draw on (modified in-place).
+            hand_landmarks (list): NormalizedLandmark objects from
+                HandLandmarkerResult. Each has .x and .y in [0.0, 1.0].
+        """
         h, w, _c = img.shape
         points = {}
         for i, lm in enumerate(hand_landmarks):
