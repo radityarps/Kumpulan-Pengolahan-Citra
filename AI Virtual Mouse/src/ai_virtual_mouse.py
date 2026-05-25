@@ -220,6 +220,12 @@ def main():
         # ================================================================
         # Only classify when a hand is detected. Otherwise, increment
         # the hand_lost counter and apply grace period before resetting.
+        #
+        # Initialize mode/action to safe defaults before classification.
+        # When no hand is detected, these fall through to the else block
+        # and remain None so downstream phases are no-ops.
+        mode = "None"
+        action = None
 
         if lmList:
             hand_lost_frames = 0
