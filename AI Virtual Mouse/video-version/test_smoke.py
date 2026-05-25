@@ -1,7 +1,7 @@
 """Quick smoke test for video-version HandTrackingModule."""
 import sys
 sys.path.insert(0, 'video-version')
-from HandTrackingModule import HandDetector
+from HandTrackingModule import HandDetector  # noqa: E402
 
 d = HandDetector()
 
@@ -34,7 +34,7 @@ d.lmList = [
 
 result = d.fingersUp()
 print(f"fingersUp: {result}")
-print(f"Expected:  [1, 1, 0, 0, 0]  (thumb up, index up, others down)")
+print("Expected:  [1, 1, 0, 0, 0]  (thumb up, index up, others down)")
 assert result == [1, 1, 0, 0, 0], f"FAIL: got {result}"
 
 # Test findDistance
@@ -45,7 +45,7 @@ print(f"index-middle distance: {length:.1f}")
 d.lmList[4][1] = 300  # thumb tip x < IP (350) → thumb down
 result2 = d.fingersUp()
 print(f"fingersUp (thumb folded): {result2}")
-print(f"Expected:                 [0, 1, 0, 0, 0]")
+print("Expected:                 [0, 1, 0, 0, 0]")
 assert result2 == [0, 1, 0, 0, 0], f"FAIL: got {result2}"
 
 # Test all fingers down
@@ -53,7 +53,7 @@ d.lmList[8][2] = 400   # index tip y > PIP y → down
 d.lmList[12][2] = 300  # middle stays down
 result3 = d.fingersUp()
 print(f"fingersUp (all down): {result3}")
-print(f"Expected:            [0, 0, 0, 0, 0]")
+print("Expected:            [0, 0, 0, 0, 0]")
 assert result3 == [0, 0, 0, 0, 0], f"FAIL: got {result3}"
 
 # Test all fingers up
@@ -64,6 +64,6 @@ d.lmList[16][2] = 250  # ring up
 d.lmList[20][2] = 260  # pinky up
 result4 = d.fingersUp()
 print(f"fingersUp (all up): {result4}")
-print(f"Expected:          [1, 1, 1, 1, 1]")
+print("Expected:          [1, 1, 1, 1, 1]")
 
 print("\nAll tests PASSED!")

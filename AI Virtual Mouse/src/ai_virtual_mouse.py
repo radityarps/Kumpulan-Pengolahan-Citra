@@ -76,13 +76,13 @@ import time
 # Enable running as `python src/ai_virtual_mouse.py` from project root
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import cv2
-import autopy
-from src.hand_tracking_module import HandDetector
-from src.gesture_classifier import GestureClassifier
-from src.coordinate_mapper import CoordinateMapper
-from src.mouse_controller import MouseController
-from src.config import (
+import cv2  # noqa: E402
+import autopy  # noqa: E402
+from src.hand_tracking_module import HandDetector  # noqa: E402
+from src.gesture_classifier import GestureClassifier  # noqa: E402
+from src.coordinate_mapper import CoordinateMapper  # noqa: E402
+from src.mouse_controller import MouseController  # noqa: E402
+from src.config import (  # noqa: E402
     FRAME_WIDTH,
     FRAME_HEIGHT,
     CAMERA_ID,
@@ -104,7 +104,7 @@ from src.config import (
     COLOR_GREEN,
     HAND_LOST_GRACE_FRAMES,
 )
-from src.utils import put_fps, put_mode_text
+from src.utils import put_fps, put_mode_text  # noqa: E402
 
 
 def main():

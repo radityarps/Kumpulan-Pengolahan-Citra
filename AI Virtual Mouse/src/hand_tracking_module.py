@@ -15,7 +15,6 @@ Provides:
 
 import math
 import os
-import time
 
 import cv2
 import numpy as np
@@ -132,7 +131,7 @@ class HandDetector:
         """
         # Convert BGR to RGB
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        
+
         # Ensure proper format - copy if needed
         img_rgb = np.ascontiguousarray(img_rgb, dtype=np.uint8)
 
@@ -240,20 +239,20 @@ class HandDetector:
         # Threshold ~35px adjusted by THUMB_SENSITIVITY (1.0 = normal)
         thumb_tip_idx = 4
         thumb_mcp_idx = 2
-        
+
         thumb_tip = self.lmList[thumb_tip_idx]
         thumb_mcp = self.lmList[thumb_mcp_idx]
-        
+
         # Distance from MCP to tip
         thumb_dist = math.sqrt(
             (thumb_tip[1] - thumb_mcp[1]) ** 2 +
             (thumb_tip[2] - thumb_mcp[2]) ** 2
         )
-        
+
         # Threshold: 35px * THUMB_SENSITIVITY
         # Higher THUMB_SENSITIVITY = stricter = easier to fold close
         thumb_threshold = 35.0 * THUMB_SENSITIVITY
-        
+
         if thumb_dist > thumb_threshold:
             fingers.append(1)  # Extended
         else:

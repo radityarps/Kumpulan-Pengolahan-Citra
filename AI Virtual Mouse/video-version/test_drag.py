@@ -1,8 +1,8 @@
 """Test fist and drag gesture detection reliability."""
 import sys
 sys.path.insert(0, 'video-version')
-from HandTrackingModule import HandDetector
-from AIVirtualMouse import _match_pattern
+from HandTrackingModule import HandDetector  # noqa: E402
+from AIVirtualMouse import _match_pattern  # noqa: E402
 
 # Simulate realistic fist: all fingers curled
 # Index tip (8) is BELOW index PIP (6) — finger curled down
