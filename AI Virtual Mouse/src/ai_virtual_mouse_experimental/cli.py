@@ -64,6 +64,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--report-session",
         help="Generate report artifacts from an existing benchmark session directory.",
     )
+    parser.add_argument(
+        "--compare-sessions",
+        nargs="+",
+        help="Generate a comparison report from multiple benchmark session directories.",
+    )
     return parser
 
 
@@ -83,6 +88,15 @@ def main(argv: list[str] | None = None) -> int:
             print("Benchmark report generated:")
             print(f"- report: {paths.report_path}")
             print(f"- completion plot: {paths.completion_plot_path}")
+            return 0
+
+        if args.compare_sessions:
+            report = import_module("ai_virtual_mouse_experimental.benchmark_report")
+            paths = report.generate_comparison_report(
+                [Path(session) for session in args.compare_sessions]
+            )
+            print("Benchmark comparison generated:")
+            print(f"- report: {paths.report_path}")
             return 0
 
         if args.download_model:

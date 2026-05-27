@@ -42,6 +42,7 @@ summarize_benchmark = benchmark_grid_module.summarize_benchmark
 format_output_paths = benchmark_logging_module.format_output_paths
 persist_benchmark_session = benchmark_logging_module.persist_benchmark_session
 compute_metrics = benchmark_report_module.compute_metrics
+generate_comparison_report = benchmark_report_module.generate_comparison_report
 generate_report_from_session = benchmark_report_module.generate_report_from_session
 load_trials_csv = benchmark_report_module.load_trials_csv
 main = cli_module.main
@@ -525,6 +526,75 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
         self.assertEqual(fixed, Point(10, 0))
         self.assertEqual(none, target)
+
+    def test_all_comparison_conditions_are_selectable_in_same_benchmark(self):
+        config = load_config(CONFIG_PATH)
+        condition_names = [
+            "baseline",
+            "smoothing_only",
+            "debounce_only",
+            "calibration_only",
+            "improved",
+        ]
+
+        plans = [
+            build_runtime_plan(config, mode_name="benchmark", condition_name=name)
+            for name in condition_names
+        ]
+
+        self.assertEqual([plan.condition for plan in plans], condition_names)
+        self.assertTrue(all(plan.mode == "benchmark" for plan in plans))
+
+    def test_comparison_report_compares_multiple_saved_sessions(self):
+        config = load_config(CONFIG_PATH)
+        baseline_plan = build_runtime_plan(config, mode_name="benchmark", condition_name="baseline")
+        improved_plan = build_runtime_plan(config, mode_name="benchmark", condition_name="improved")
+        state = start_current_trial(create_point_click_benchmark(config.benchmark), 10.0)
+        target = state.current_target
+        self.assertIsNotNone(target)
+        state = register_click(state, target.x, target.y, 11.0)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            baseline_paths = persist_benchmark_session(
+                state, config, baseline_plan, output_root=Path(tmpdir)
+            )
+            improved_paths = persist_benchmark_session(
+                state, config, improved_plan, output_root=Path(tmpdir)
+            )
+            comparison = generate_comparison_report(
+                [baseline_paths.session_dir, improved_paths.session_dir]
+            )
+            content = comparison.report_path.read_text(encoding="utf-8")
+
+        self.assertIn("baseline", content)
+        self.assertIn("improved", content)
+        self.assertIn("Do not claim general mouse-replacement superiority", content)
+
+    def test_cli_compare_sessions_generates_report(self):
+        config = load_config(CONFIG_PATH)
+        baseline_plan = build_runtime_plan(config, mode_name="benchmark", condition_name="baseline")
+        improved_plan = build_runtime_plan(config, mode_name="benchmark", condition_name="improved")
+        state = create_point_click_benchmark(config.benchmark)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            baseline_paths = persist_benchmark_session(
+                state, config, baseline_plan, output_root=Path(tmpdir)
+            )
+            improved_paths = persist_benchmark_session(
+                state, config, improved_plan, output_root=Path(tmpdir)
+            )
+            output = StringIO()
+            with redirect_stdout(output):
+                exit_code = main(
+                    [
+                        "--compare-sessions",
+                        str(baseline_paths.session_dir),
+                        str(improved_paths.session_dir),
+                    ]
+                )
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Benchmark comparison generated", output.getvalue())
 
     def test_tasks_model_path_resolves_inside_project_root(self):
         path = resolve_model_path("models/hand_landmarker.task", Path("/tmp/project"))

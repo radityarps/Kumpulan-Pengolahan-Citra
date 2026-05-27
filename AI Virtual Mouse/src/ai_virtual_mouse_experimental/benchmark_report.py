@@ -28,6 +28,11 @@ class BenchmarkReportPaths:
     completion_plot_path: Path
 
 
+@dataclass(frozen=True)
+class ComparisonReportPath:
+    report_path: Path
+
+
 def load_trials_csv(path: Path) -> list[dict[str, str]]:
     with path.open(newline="", encoding="utf-8") as csv_file:
         return list(csv.DictReader(csv_file))
@@ -177,6 +182,53 @@ def generate_report_from_session(session_dir: Path) -> BenchmarkReportPaths:
         metadata, metrics, plot_path, session_dir / "report.md"
     )
     return BenchmarkReportPaths(report_path=report_path, completion_plot_path=plot_path)
+
+
+def generate_comparison_report(
+    session_dirs: list[Path],
+    output_path: Path | None = None,
+) -> ComparisonReportPath:
+    if not session_dirs:
+        raise ValueError("At least one session directory is required for comparison.")
+
+    compared_rows = []
+    for session_dir in session_dirs:
+        metadata = load_metadata(session_dir / "metadata.json")
+        trials = load_trials_csv(session_dir / "trials.csv")
+        metrics = compute_metrics(trials, metadata)
+        compared_rows.append((session_dir, metadata, metrics))
+
+    destination = output_path or session_dirs[0].parent / "comparison_report.md"
+    lines = [
+        "# AI Virtual Mouse Benchmark Comparison",
+        "",
+        "This report compares saved point-and-click benchmark sessions. Use it to compare baseline, ablation, and full improved conditions under the same task. Do not claim general mouse-replacement superiority from this benchmark alone.",
+        "",
+        "| Session | Condition | Backend | Hit rate | False clicks | Click count | Mean completion time | Jitter estimate |",
+        "|---|---|---|---:|---:|---:|---:|---:|",
+    ]
+    for session_dir, metadata, metrics in compared_rows:
+        lines.append(
+            "| "
+            f"{session_dir.name} | "
+            f"{metadata.get('condition', 'unknown')} | "
+            f"{metadata.get('backend', 'unknown')} | "
+            f"{metrics.hit_rate:.2%} | "
+            f"{metrics.false_clicks} | "
+            f"{metrics.click_count} | "
+            f"{metrics.mean_completion_time_s:.3f}s | "
+            f"{metrics.jitter_estimate_px:.3f}px |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Methodology Note",
+            "",
+            "All listed sessions should come from the same point-and-click benchmark configuration. Conditions encode the experimental treatment: baseline, smoothing-only, debounce-only, calibration-only, or full improved.",
+        ]
+    )
+    destination.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return ComparisonReportPath(report_path=destination)
 
 
 def _mean(values: list[float]) -> float:
