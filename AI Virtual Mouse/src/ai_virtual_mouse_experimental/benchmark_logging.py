@@ -4,6 +4,7 @@ import csv
 import json
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
+from importlib import import_module
 from pathlib import Path
 from uuid import uuid4
 
@@ -18,6 +19,8 @@ class BenchmarkSessionPaths:
     session_dir: Path
     metadata_path: Path
     trials_csv_path: Path
+    report_path: Path
+    completion_plot_path: Path
 
 
 TRIAL_FIELDNAMES = [
@@ -66,6 +69,8 @@ def create_session_paths(
         session_dir=session_dir,
         metadata_path=session_dir / "metadata.json",
         trials_csv_path=session_dir / "trials.csv",
+        report_path=session_dir / "report.md",
+        completion_plot_path=session_dir / "completion_times.svg",
     )
 
 
@@ -90,6 +95,8 @@ def build_session_metadata(
             "session_dir": str(paths.session_dir),
             "metadata_path": str(paths.metadata_path),
             "trials_csv_path": str(paths.trials_csv_path),
+            "report_path": str(paths.report_path),
+            "completion_plot_path": str(paths.completion_plot_path),
         },
     }
 
@@ -155,10 +162,14 @@ def persist_benchmark_session(
     config: ExperimentalConfig,
     plan: RuntimePlan,
     output_root: Path | None = None,
+    generate_report: bool = True,
 ) -> BenchmarkSessionPaths:
     paths = create_session_paths(config, plan, output_root=output_root)
     write_session_metadata(config, plan, paths)
     write_trials_csv(state, config, plan, paths)
+    if generate_report:
+        benchmark_report = import_module("ai_virtual_mouse_experimental.benchmark_report")
+        benchmark_report.generate_report_from_session(paths.session_dir)
     return paths
 
 
@@ -169,5 +180,7 @@ def format_output_paths(paths: BenchmarkSessionPaths) -> str:
             f"- session: {paths.session_dir}",
             f"- metadata: {paths.metadata_path}",
             f"- trials CSV: {paths.trials_csv_path}",
+            f"- report: {paths.report_path}",
+            f"- completion plot: {paths.completion_plot_path}",
         )
     )

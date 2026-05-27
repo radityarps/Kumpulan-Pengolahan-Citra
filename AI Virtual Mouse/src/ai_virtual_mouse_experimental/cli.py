@@ -60,6 +60,10 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Initialize the selected MediaPipe Tasks backend and print metadata.",
     )
+    parser.add_argument(
+        "--report-session",
+        help="Generate report artifacts from an existing benchmark session directory.",
+    )
     return parser
 
 
@@ -71,6 +75,14 @@ def main(argv: list[str] | None = None) -> int:
         config = load_config(Path(args.config))
         if args.list:
             print(format_config_options(config))
+            return 0
+
+        if args.report_session:
+            report = import_module("ai_virtual_mouse_experimental.benchmark_report")
+            paths = report.generate_report_from_session(Path(args.report_session))
+            print("Benchmark report generated:")
+            print(f"- report: {paths.report_path}")
+            print(f"- completion plot: {paths.completion_plot_path}")
             return 0
 
         if args.download_model:

@@ -15,6 +15,7 @@ app_module = import_module("ai_virtual_mouse_experimental.app")
 baseline_module = import_module("ai_virtual_mouse_experimental.baseline")
 benchmark_grid_module = import_module("ai_virtual_mouse_experimental.benchmark_grid")
 benchmark_logging_module = import_module("ai_virtual_mouse_experimental.benchmark_logging")
+benchmark_report_module = import_module("ai_virtual_mouse_experimental.benchmark_report")
 benchmark_shell_module = import_module("ai_virtual_mouse_experimental.benchmark_shell")
 cli_module = import_module("ai_virtual_mouse_experimental.cli")
 config_module = import_module("ai_virtual_mouse_experimental.config")
@@ -34,6 +35,9 @@ start_current_trial = benchmark_grid_module.start_current_trial
 summarize_benchmark = benchmark_grid_module.summarize_benchmark
 format_output_paths = benchmark_logging_module.format_output_paths
 persist_benchmark_session = benchmark_logging_module.persist_benchmark_session
+compute_metrics = benchmark_report_module.compute_metrics
+generate_report_from_session = benchmark_report_module.generate_report_from_session
+load_trials_csv = benchmark_report_module.load_trials_csv
 main = cli_module.main
 ConfigError = config_module.ConfigError
 load_config = config_module.load_config
@@ -250,6 +254,51 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
         self.assertIn("metadata", formatted)
         self.assertIn("trials CSV", formatted)
+        self.assertIn("report", formatted)
+
+    def test_benchmark_metrics_and_report_are_generated_from_session(self):
+        config = load_config(CONFIG_PATH)
+        plan = build_runtime_plan(config, mode_name="benchmark", condition_name="baseline")
+        state = start_current_trial(create_point_click_benchmark(config.benchmark), 10.0)
+        target = state.current_target
+        self.assertIsNotNone(target)
+        state = register_click(state, 0, 0, 11.0)
+        state = register_click(state, target.x, target.y, 13.0)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            paths = persist_benchmark_session(state, config, plan, output_root=Path(tmpdir))
+            report_paths = generate_report_from_session(paths.session_dir)
+            rows = load_trials_csv(paths.trials_csv_path)
+            metadata = json.loads(paths.metadata_path.read_text(encoding="utf-8"))
+            metrics = compute_metrics(rows, metadata)
+            report = report_paths.report_path.read_text(encoding="utf-8")
+            plot_exists = report_paths.completion_plot_path.exists()
+
+        self.assertEqual(metrics.hit_count, 1)
+        self.assertEqual(metrics.false_clicks, 1)
+        self.assertEqual(metrics.click_count, 2)
+        self.assertGreaterEqual(metrics.hit_rate, 0)
+        self.assertIn("Mean completion time", report)
+        self.assertTrue(plot_exists)
+
+    def test_cli_generates_report_from_existing_session(self):
+        config = load_config(CONFIG_PATH)
+        plan = build_runtime_plan(config, mode_name="benchmark", condition_name="baseline")
+        state = start_current_trial(create_point_click_benchmark(config.benchmark), 10.0)
+        target = state.current_target
+        self.assertIsNotNone(target)
+        state = register_click(state, target.x, target.y, 11.5)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            paths = persist_benchmark_session(
+                state, config, plan, output_root=Path(tmpdir), generate_report=False
+            )
+            output = StringIO()
+            with redirect_stdout(output):
+                exit_code = main(["--report-session", str(paths.session_dir)])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("Benchmark report generated", output.getvalue())
 
     def test_tasks_model_path_resolves_inside_project_root(self):
         path = resolve_model_path("models/hand_landmarker.task", Path("/tmp/project"))
