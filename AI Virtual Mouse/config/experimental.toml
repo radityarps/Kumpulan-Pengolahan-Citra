@@ -1,0 +1,87 @@
+[app]
+name = "AI Virtual Mouse Experimental Prototype"
+default_mode = "benchmark"
+default_condition = "baseline"
+safe_startup = true
+allow_real_mouse = false
+
+[backend]
+name = "mediapipe_solutions"
+camera_index = 0
+camera_width = 640
+camera_height = 480
+model_path = "models/hand_landmarker.task"
+auto_download_model = false
+
+[modes.benchmark]
+description = "Run the point-and-click benchmark with a simulated cursor."
+requires_camera = false
+controls_real_mouse = false
+
+[modes.demo]
+description = "Run a live virtual mouse demo. Real mouse control remains disabled unless explicitly allowed."
+requires_camera = true
+controls_real_mouse = true
+
+[modes.config]
+description = "Validate configuration and print the selected runtime plan."
+requires_camera = false
+controls_real_mouse = false
+
+[conditions.baseline]
+backend = "mediapipe_solutions"
+gesture_profile = "tutorial_pinch"
+smoothing_strategy = "fixed"
+debounce_enabled = false
+calibration_enabled = false
+
+[conditions.smoothing_only]
+backend = "mediapipe_solutions"
+gesture_profile = "tutorial_pinch"
+smoothing_strategy = "adaptive"
+debounce_enabled = false
+calibration_enabled = false
+
+[conditions.debounce_only]
+backend = "mediapipe_solutions"
+gesture_profile = "tutorial_pinch"
+smoothing_strategy = "fixed"
+debounce_enabled = true
+calibration_enabled = false
+
+[conditions.calibration_only]
+backend = "mediapipe_solutions"
+gesture_profile = "tutorial_pinch"
+smoothing_strategy = "fixed"
+debounce_enabled = false
+calibration_enabled = true
+
+[conditions.improved]
+backend = "mediapipe_tasks"
+gesture_profile = "improved_drag_scroll_pause"
+smoothing_strategy = "adaptive"
+debounce_enabled = true
+calibration_enabled = true
+
+[benchmark]
+name = "point_click_grid"
+window_width = 960
+window_height = 640
+target_count = 20
+target_radius = 24
+random_seed = 20260527
+countdown_seconds = 3
+
+[gesture]
+move_finger = "index"
+click_gesture = "index_middle_pinch"
+click_threshold_px = 40
+drag_gesture = "pinch_hold"
+scroll_gesture = "index_middle_vertical"
+pause_gesture = "open_palm"
+
+[output]
+root_dir = "outputs"
+csv_dir = "outputs/csv"
+plot_dir = "outputs/plots"
+report_dir = "outputs/reports"

@@ -22,6 +22,27 @@ AutoPy mouse movement/click
 
 ## Runtime Components
 
+### `src/ai_virtual_mouse_experimental/`
+
+Experimental research prototype skeleton.
+
+Responsibilities:
+
+- Load and validate TOML configuration from `config/experimental.toml`.
+- Select a named app mode such as `benchmark`, `demo`, or `config`.
+- Select a named research condition such as `baseline`, `smoothing_only`, `debounce_only`, `calibration_only`, or `improved`.
+- Build a safe startup plan before any camera or mouse-control runtime is launched.
+- Reject modes that would control the real OS mouse unless explicitly permitted.
+
+Current entry points:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --help
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --list
+```
+
+This skeleton intentionally stops after printing the runtime plan. The camera loop, simulated benchmark window, and reporting pipeline are planned follow-up modules.
+
 ### `video version/AiVirtualMouseProject.py`
 
 Main application loop.
@@ -118,6 +139,8 @@ This reduces jitter from frame-to-frame landmark noise.
 | `mediapipe` | Hand landmark detection |
 | `numpy` | Coordinate interpolation |
 | `autopy` | Mouse control |
+
+The experimental skeleton uses only the Python standard library at startup. Camera-dependent modes validate that OpenCV and MediaPipe are importable before proceeding.
 
 ## Current Architectural Limitations
 

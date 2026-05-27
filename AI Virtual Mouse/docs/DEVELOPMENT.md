@@ -29,13 +29,39 @@ pip install -r requirements.txt
 
 ## Running the App
 
+Tutorial-compatible implementation:
+
 ```bash
 python "video version/AiVirtualMouseProject.py"
 ```
 
 Press `q` to exit.
 
+Experimental skeleton:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --help
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --list
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode config --condition improved
+```
+
+PowerShell with the workspace virtual environment:
+
+```powershell
+$env:PYTHONPATH='src'; .venv\Scripts\python.exe -m ai_virtual_mouse_experimental --list
+```
+
 ## Code Overview
+
+### Experimental Package
+
+`src/ai_virtual_mouse_experimental/`
+
+Contains the safe experimental startup skeleton:
+
+- `cli.py` parses command-line options.
+- `config.py` loads and validates `config/experimental.toml`.
+- `app.py` builds the runtime plan and rejects unsafe startup choices.
 
 ### Main Script
 
@@ -75,6 +101,8 @@ SMOOTHING = 7
 CLICK_THRESHOLD = 40
 ```
 
+The experimental branch now starts this direction with `config/experimental.toml`.
+
 ### Phase 2: Modular Runtime
 
 Separate the current script into modules:
@@ -113,6 +141,9 @@ Add standard Python project files:
 
 Before considering a change stable, verify:
 
+- [ ] `python -m ai_virtual_mouse_experimental --help` prints usage.
+- [ ] `python -m ai_virtual_mouse_experimental --list` prints modes and conditions.
+- [ ] The experimental default startup plan does not control the real OS mouse.
 - [ ] App starts without import errors.
 - [ ] Webcam window opens.
 - [ ] No crash when no hand is visible.
