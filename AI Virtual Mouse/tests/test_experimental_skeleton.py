@@ -59,9 +59,13 @@ map_point_to_output = cursor_mapping_module.map_point_to_output
 select_mapping_bounds = cursor_mapping_module.select_mapping_bounds
 GestureEngineConfig = gesture_engine_module.GestureEngineConfig
 GestureInput = gesture_engine_module.GestureInput
+ClickDebounceConfig = gesture_engine_module.ClickDebounceConfig
+ClickDebounceState = gesture_engine_module.ClickDebounceState
 classify_improved_gesture = gesture_engine_module.classify_improved_gesture
 config_from_settings = gesture_engine_module.config_from_settings
+debounce_config_from_settings = gesture_engine_module.debounce_config_from_settings
 feedback_style = gesture_engine_module.feedback_style
+update_click_debounce = gesture_engine_module.update_click_debounce
 build_tasks_backend_metadata = tasks_backend_module.build_tasks_backend_metadata
 download_hand_landmarker_model = tasks_backend_module.download_hand_landmarker_model
 ensure_hand_landmarker_model = tasks_backend_module.ensure_hand_landmarker_model
@@ -402,6 +406,65 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertEqual(
             engine_config.click_threshold_px, config.gesture.click_threshold_px
         )
+
+    def test_click_debounce_emits_one_click_per_stable_pinch(self):
+        state = ClickDebounceState()
+        config = ClickDebounceConfig(
+            stable_frames_required=2, release_frames_required=2, cooldown_seconds=0.35
+        )
+
+        first = update_click_debounce(state, True, 1.0, config)
+        second = update_click_debounce(first.state, True, 1.1, config)
+        repeated = update_click_debounce(second.state, True, 1.2, config)
+
+        self.assertFalse(first.emit_click)
+        self.assertTrue(second.emit_click)
+        self.assertFalse(repeated.emit_click)
+
+    def test_click_debounce_rearms_after_release(self):
+        config = ClickDebounceConfig(
+            stable_frames_required=1, release_frames_required=2, cooldown_seconds=0.0
+        )
+        emitted = update_click_debounce(ClickDebounceState(), True, 1.0, config)
+        release_one = update_click_debounce(emitted.state, False, 1.1, config)
+        release_two = update_click_debounce(release_one.state, False, 1.2, config)
+        emitted_again = update_click_debounce(release_two.state, True, 1.3, config)
+
+        self.assertTrue(emitted.emit_click)
+        self.assertFalse(release_one.state.armed)
+        self.assertTrue(release_two.state.armed)
+        self.assertTrue(emitted_again.emit_click)
+
+    def test_click_debounce_respects_cooldown(self):
+        config = ClickDebounceConfig(
+            stable_frames_required=1, release_frames_required=1, cooldown_seconds=1.0
+        )
+        emitted = update_click_debounce(ClickDebounceState(), True, 1.0, config)
+        released = update_click_debounce(emitted.state, False, 1.1, config)
+        too_soon = update_click_debounce(released.state, True, 1.5, config)
+
+        self.assertTrue(emitted.emit_click)
+        self.assertFalse(too_soon.emit_click)
+
+    def test_debounce_ablation_and_full_improved_modes_are_selectable(self):
+        config = load_config(CONFIG_PATH)
+        debounce_plan = build_runtime_plan(config, condition_name="debounce_only")
+        improved_plan = build_runtime_plan(config, condition_name="improved")
+
+        self.assertTrue(debounce_plan.metadata["debounce_enabled"])
+        self.assertFalse(debounce_plan.metadata["calibration_enabled"])
+        self.assertEqual(debounce_plan.metadata["smoothing_strategy"], "fixed")
+        self.assertTrue(improved_plan.metadata["debounce_enabled"])
+        self.assertTrue(improved_plan.metadata["calibration_enabled"])
+        self.assertEqual(improved_plan.metadata["smoothing_strategy"], "adaptive")
+
+    def test_debounce_parameters_are_in_run_metadata(self):
+        config = load_config(CONFIG_PATH)
+        plan = build_runtime_plan(config, condition_name="debounce_only")
+        debounce_config = debounce_config_from_settings(config.debounce)
+
+        self.assertEqual(plan.metadata["debounce_parameters"]["cooldown_seconds"], 0.35)
+        self.assertEqual(debounce_config.stable_frames_required, 2)
 
     def test_calibration_captures_comfortable_tracking_region(self):
         bounds = calibrate_bounds(

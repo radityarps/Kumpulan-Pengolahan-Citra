@@ -43,6 +43,28 @@ class GestureEngineConfig:
     scroll_scale: float = 0.1
 
 
+@dataclass(frozen=True)
+class ClickDebounceConfig:
+    stable_frames_required: int = 2
+    release_frames_required: int = 2
+    cooldown_seconds: float = 0.35
+
+
+@dataclass(frozen=True)
+class ClickDebounceState:
+    pressed_frames: int = 0
+    released_frames: int = 0
+    armed: bool = True
+    last_click_time_s: float = -9999.0
+
+
+@dataclass(frozen=True)
+class ClickDebounceResult:
+    state: ClickDebounceState
+    emit_click: bool
+    reason: str
+
+
 def config_from_settings(settings: GestureSettings) -> GestureEngineConfig:
     return GestureEngineConfig(click_threshold_px=settings.click_threshold_px)
 
@@ -110,6 +132,58 @@ def is_pinching(hand: GestureInput, config: GestureEngineConfig) -> bool:
     return (
         hand.pinch_distance_px is not None
         and hand.pinch_distance_px < config.click_threshold_px
+    )
+
+
+def update_click_debounce(
+    state: ClickDebounceState,
+    raw_click_active: bool,
+    now_s: float,
+    config: ClickDebounceConfig | None = None,
+) -> ClickDebounceResult:
+    cfg = config or ClickDebounceConfig()
+
+    if raw_click_active:
+        next_state = ClickDebounceState(
+            pressed_frames=state.pressed_frames + 1,
+            released_frames=0,
+            armed=state.armed,
+            last_click_time_s=state.last_click_time_s,
+        )
+        cooldown_elapsed = now_s - state.last_click_time_s >= cfg.cooldown_seconds
+        stable = next_state.pressed_frames >= cfg.stable_frames_required
+        if next_state.armed and stable and cooldown_elapsed:
+            return ClickDebounceResult(
+                state=ClickDebounceState(
+                    pressed_frames=next_state.pressed_frames,
+                    released_frames=0,
+                    armed=False,
+                    last_click_time_s=now_s,
+                ),
+                emit_click=True,
+                reason="stable_click_emitted",
+            )
+        return ClickDebounceResult(next_state, False, "click_not_ready")
+
+    released_frames = state.released_frames + 1
+    armed = state.armed or released_frames >= cfg.release_frames_required
+    return ClickDebounceResult(
+        state=ClickDebounceState(
+            pressed_frames=0,
+            released_frames=released_frames,
+            armed=armed,
+            last_click_time_s=state.last_click_time_s,
+        ),
+        emit_click=False,
+        reason="released" if armed else "waiting_for_release",
+    )
+
+
+def debounce_config_from_settings(settings) -> ClickDebounceConfig:
+    return ClickDebounceConfig(
+        stable_frames_required=settings.stable_frames_required,
+        release_frames_required=settings.release_frames_required,
+        cooldown_seconds=settings.cooldown_seconds,
     )
 
 

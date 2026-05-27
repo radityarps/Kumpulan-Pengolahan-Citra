@@ -91,6 +91,7 @@ def build_session_metadata(
         "runtime_metadata": plan.metadata,
         "benchmark": asdict(config.benchmark),
         "gesture": asdict(config.gesture),
+        "debounce": asdict(config.debounce),
         "output": {
             "session_dir": str(paths.session_dir),
             "metadata_path": str(paths.metadata_path),

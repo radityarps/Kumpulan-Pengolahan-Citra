@@ -81,6 +81,12 @@ drag_gesture = "pinch_hold"
 scroll_gesture = "index_middle_vertical"
 pause_gesture = "open_palm"
 
+[debounce]
+enabled_default = true
+stable_frames_required = 2
+release_frames_required = 2
+cooldown_seconds = 0.35
+
 [output]
 root_dir = "outputs"
 csv_dir = "outputs/csv"

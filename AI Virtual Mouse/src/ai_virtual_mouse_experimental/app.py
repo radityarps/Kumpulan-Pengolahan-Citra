@@ -66,6 +66,11 @@ def build_runtime_plan(
             "gesture_profile": condition.gesture_profile,
             "smoothing_strategy": condition.smoothing_strategy,
             "debounce_enabled": condition.debounce_enabled,
+            "debounce_parameters": {
+                "stable_frames_required": config.debounce.stable_frames_required,
+                "release_frames_required": config.debounce.release_frames_required,
+                "cooldown_seconds": config.debounce.cooldown_seconds,
+            },
             "calibration_enabled": condition.calibration_enabled,
             "benchmark_name": config.benchmark.name,
         },

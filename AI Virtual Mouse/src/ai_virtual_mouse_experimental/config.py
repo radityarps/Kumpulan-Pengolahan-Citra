@@ -67,6 +67,14 @@ class GestureSettings:
 
 
 @dataclass(frozen=True)
+class DebounceSettings:
+    enabled_default: bool
+    stable_frames_required: int
+    release_frames_required: int
+    cooldown_seconds: float
+
+
+@dataclass(frozen=True)
 class OutputSettings:
     root_dir: str
     csv_dir: str
@@ -82,6 +90,7 @@ class ExperimentalConfig:
     conditions: dict[str, ConditionSettings]
     benchmark: BenchmarkSettings
     gesture: GestureSettings
+    debounce: DebounceSettings
     output: OutputSettings
 
     def get_mode(self, name: str) -> ModeSettings:
@@ -129,6 +138,7 @@ def parse_config(raw: dict) -> ExperimentalConfig:
             conditions=conditions,
             benchmark=BenchmarkSettings(**raw["benchmark"]),
             gesture=GestureSettings(**raw["gesture"]),
+            debounce=DebounceSettings(**raw["debounce"]),
             output=OutputSettings(**raw["output"]),
         )
     except KeyError as exc:
@@ -151,3 +161,9 @@ def validate_config(config: ExperimentalConfig) -> None:
         raise ConfigError("Benchmark target_radius must be greater than zero.")
     if config.gesture.click_threshold_px <= 0:
         raise ConfigError("Gesture click_threshold_px must be greater than zero.")
+    if config.debounce.stable_frames_required <= 0:
+        raise ConfigError("Debounce stable_frames_required must be greater than zero.")
+    if config.debounce.release_frames_required <= 0:
+        raise ConfigError("Debounce release_frames_required must be greater than zero.")
+    if config.debounce.cooldown_seconds < 0:
+        raise ConfigError("Debounce cooldown_seconds cannot be negative.")
