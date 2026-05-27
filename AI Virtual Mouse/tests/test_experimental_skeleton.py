@@ -655,6 +655,76 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         ):
             ensure_hand_landmarker_model(config, Path(tmpdir))
 
+    # Real Mouse Runtime tests
+
+    def test_pause_toggle_activates_after_hold_threshold(self):
+        from ai_virtual_mouse_experimental.real_mouse_runtime import PauseToggleState, update_pause_toggle
+        state = PauseToggleState(toggle_threshold_frames=3)
+
+        result = update_pause_toggle(state, open_palm_active=True)
+        self.assertFalse(result.toggled)
+        self.assertFalse(result.state.paused)
+
+        result = update_pause_toggle(result.state, open_palm_active=True)
+        self.assertFalse(result.toggled)
+
+        result = update_pause_toggle(result.state, open_palm_active=True)
+        self.assertTrue(result.toggled)
+        self.assertTrue(result.state.paused)
+
+    def test_pause_toggle_resets_after_release(self):
+        from ai_virtual_mouse_experimental.real_mouse_runtime import PauseToggleState, update_pause_toggle
+        paused = PauseToggleState(holding=True, hold_frames=5, paused=True)
+
+        result = update_pause_toggle(paused, open_palm_active=False)
+
+        self.assertFalse(result.state.holding)
+        self.assertEqual(result.state.hold_frames, 0)
+        self.assertTrue(result.state.paused)
+
+    def test_safety_corner_failsafe_triggers_after_threshold(self):
+        from ai_virtual_mouse_experimental.real_mouse_runtime import SafetyState, check_safety
+        state = SafetyState(corner_threshold_frames=3)
+
+        result = check_safety(state, cursor_x=0, cursor_y=0)
+        self.assertFalse(result.quit_requested)
+
+        result = check_safety(result, cursor_x=0, cursor_y=0)
+        self.assertFalse(result.quit_requested)
+
+        result = check_safety(result, cursor_x=0, cursor_y=0)
+        self.assertTrue(result.quit_requested)
+
+    def test_real_mouse_metadata_includes_safety_controls(self):
+        from ai_virtual_mouse_experimental.real_mouse_runtime import build_real_mouse_metadata
+        config = load_config(CONFIG_PATH)
+        plan = build_runtime_plan(config, mode_name="demo", allow_real_mouse=True)
+
+        metadata = build_real_mouse_metadata(config, plan)
+
+        self.assertIn("safety_controls", metadata)
+        self.assertEqual(metadata["safety_controls"], ["keyboard_quit", "pause_toggle", "corner_failsafe"])
+
+    def test_real_mouse_metadata_records_backend_preference(self):
+        from ai_virtual_mouse_experimental.real_mouse_runtime import build_real_mouse_metadata
+        config = load_config(CONFIG_PATH)
+        plan = build_runtime_plan(config, mode_name="demo", allow_real_mouse=True)
+
+        metadata = build_real_mouse_metadata(config, plan)
+
+        self.assertEqual(metadata["backend_preference"], "mediapipe_tasks")
+        self.assertTrue(metadata["backend_fallback_allowed"])
+
+    def test_hand_tracking_result_records_backend_and_fallback(self):
+        from ai_virtual_mouse_experimental.hand_tracker import HandTrackingResult
+        result = HandTrackingResult(
+            success=False,
+            backend_used="mediapipe_solutions",
+            fallback_reason="model not found",
+        )
+
+        self.assertEqual(result.backend_used, "mediapipe_solutions")
+        self.assertEqual(result.fallback_reason, "model not found")
 
 if __name__ == "__main__":
     unittest.main()

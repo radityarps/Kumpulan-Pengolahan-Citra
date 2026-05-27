@@ -140,6 +140,12 @@ def main(argv: list[str] | None = None) -> int:
             metadata = baseline.build_baseline_metadata(config, plan)
             print(f"Baseline metadata: {metadata}")
             return baseline.run_frozen_video_baseline(config, plan)
+
+        if plan.mode == "demo" and plan.condition != "baseline":
+            runtime = import_module("ai_virtual_mouse_experimental.real_mouse_runtime")
+            metadata = runtime.build_real_mouse_metadata(config, plan)
+            print(f"Real Mouse Runtime metadata: {metadata}")
+            return runtime.run_real_mouse_runtime(config, plan)
     except RuntimeError as exc:
         parser.exit(2, f"error: {exc}\n")
 
