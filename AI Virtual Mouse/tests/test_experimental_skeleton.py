@@ -19,6 +19,7 @@ benchmark_report_module = import_module("ai_virtual_mouse_experimental.benchmark
 benchmark_shell_module = import_module("ai_virtual_mouse_experimental.benchmark_shell")
 cli_module = import_module("ai_virtual_mouse_experimental.cli")
 config_module = import_module("ai_virtual_mouse_experimental.config")
+gesture_engine_module = import_module("ai_virtual_mouse_experimental.gesture_engine")
 tasks_backend_module = import_module("ai_virtual_mouse_experimental.tasks_backend")
 
 StartupError = app_module.StartupError
@@ -41,6 +42,11 @@ load_trials_csv = benchmark_report_module.load_trials_csv
 main = cli_module.main
 ConfigError = config_module.ConfigError
 load_config = config_module.load_config
+GestureEngineConfig = gesture_engine_module.GestureEngineConfig
+GestureInput = gesture_engine_module.GestureInput
+classify_improved_gesture = gesture_engine_module.classify_improved_gesture
+config_from_settings = gesture_engine_module.config_from_settings
+feedback_style = gesture_engine_module.feedback_style
 build_tasks_backend_metadata = tasks_backend_module.build_tasks_backend_metadata
 download_hand_landmarker_model = tasks_backend_module.download_hand_landmarker_model
 ensure_hand_landmarker_model = tasks_backend_module.ensure_hand_landmarker_model
@@ -299,6 +305,64 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertIn("Benchmark report generated", output.getvalue())
+
+    def test_improved_gesture_engine_supports_move(self):
+        result = classify_improved_gesture(GestureInput(index=True))
+
+        self.assertEqual(result.name, "move")
+        self.assertTrue(result.cursor_enabled)
+
+    def test_improved_gesture_engine_supports_click(self):
+        result = classify_improved_gesture(
+            GestureInput(index=True, middle=True, pinch_distance_px=20)
+        )
+
+        self.assertEqual(result.name, "click")
+        self.assertTrue(result.click)
+
+    def test_improved_gesture_engine_supports_drag(self):
+        result = classify_improved_gesture(
+            GestureInput(
+                index=True,
+                middle=True,
+                pinch_distance_px=20,
+                pinch_duration_s=1.0,
+            ),
+            GestureEngineConfig(drag_hold_seconds=0.5),
+        )
+
+        self.assertEqual(result.name, "drag")
+        self.assertTrue(result.drag)
+
+    def test_improved_gesture_engine_supports_scroll(self):
+        result = classify_improved_gesture(
+            GestureInput(
+                index=True,
+                middle=True,
+                index_middle_vertical_delta_px=30,
+            )
+        )
+
+        self.assertEqual(result.name, "scroll")
+        self.assertNotEqual(result.scroll_delta, 0)
+
+    def test_improved_gesture_engine_supports_pause_feedback(self):
+        result = classify_improved_gesture(
+            GestureInput(index=True, middle=True, ring=True, pinky=True)
+        )
+        style = feedback_style(result)
+
+        self.assertEqual(result.name, "pause")
+        self.assertTrue(result.paused)
+        self.assertEqual(style["label"], "Paused")
+        self.assertIn("color", style)
+
+    def test_gesture_engine_config_uses_project_settings(self):
+        config = load_config(CONFIG_PATH)
+
+        engine_config = config_from_settings(config.gesture)
+
+        self.assertEqual(engine_config.click_threshold_px, config.gesture.click_threshold_px)
 
     def test_tasks_model_path_resolves_inside_project_root(self):
         path = resolve_model_path("models/hand_landmarker.task", Path("/tmp/project"))
