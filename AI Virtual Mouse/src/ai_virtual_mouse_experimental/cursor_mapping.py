@@ -45,7 +45,9 @@ class SmoothingConfig:
     fast_movement_threshold_px: float = 260.0
 
 
-def default_camera_bounds(width: int, height: int, frame_reduction: int = 100) -> Bounds:
+def default_camera_bounds(
+    width: int, height: int, frame_reduction: int = 100
+) -> Bounds:
     return Bounds(
         left=frame_reduction,
         top=frame_reduction,
@@ -54,7 +56,9 @@ def default_camera_bounds(width: int, height: int, frame_reduction: int = 100) -
     )
 
 
-def calibrate_bounds(samples: list[Point], config: CalibrationConfig | None = None) -> Bounds:
+def calibrate_bounds(
+    samples: list[Point], config: CalibrationConfig | None = None
+) -> Bounds:
     if not samples:
         raise ValueError("Calibration requires at least one sample point.")
 
@@ -76,7 +80,9 @@ def calibrate_bounds(samples: list[Point], config: CalibrationConfig | None = No
     return Bounds(left=min_x, top=min_y, right=max_x, bottom=max_y)
 
 
-def map_point_to_output(point: Point, source: Bounds, output_width: int, output_height: int) -> Point:
+def map_point_to_output(
+    point: Point, source: Bounds, output_width: int, output_height: int
+) -> Point:
     source.validate()
     clamped_x = min(max(point.x, source.left), source.right)
     clamped_y = min(max(point.y, source.top), source.bottom)
@@ -129,7 +135,9 @@ def apply_smoothing(
     if strategy == "adaptive":
         return adaptive_smooth(previous, target, config)
     if strategy == "fixed":
-        return fixed_smooth(previous, target, (config or SmoothingConfig()).fixed_factor)
+        return fixed_smooth(
+            previous, target, (config or SmoothingConfig()).fixed_factor
+        )
     if strategy == "none":
         return target
     raise ValueError(f"Unknown smoothing strategy: {strategy}")

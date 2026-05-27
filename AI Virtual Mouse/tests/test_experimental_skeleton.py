@@ -499,7 +499,9 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         previous = Point(0, 0)
         small_target = Point(10, 0)
         large_target = Point(300, 0)
-        config = SmoothingConfig(min_factor=2, max_factor=10, fast_movement_threshold_px=300)
+        config = SmoothingConfig(
+            min_factor=2, max_factor=10, fast_movement_threshold_px=300
+        )
 
         small_step = adaptive_smooth(previous, small_target, config)
         large_step = adaptive_smooth(previous, large_target, config)
@@ -521,7 +523,9 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         previous = Point(0, 0)
         target = Point(70, 0)
 
-        fixed = apply_smoothing("fixed", previous, target, SmoothingConfig(fixed_factor=7))
+        fixed = apply_smoothing(
+            "fixed", previous, target, SmoothingConfig(fixed_factor=7)
+        )
         none = apply_smoothing("none", previous, target)
 
         self.assertEqual(fixed, Point(10, 0))
@@ -547,9 +551,15 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
     def test_comparison_report_compares_multiple_saved_sessions(self):
         config = load_config(CONFIG_PATH)
-        baseline_plan = build_runtime_plan(config, mode_name="benchmark", condition_name="baseline")
-        improved_plan = build_runtime_plan(config, mode_name="benchmark", condition_name="improved")
-        state = start_current_trial(create_point_click_benchmark(config.benchmark), 10.0)
+        baseline_plan = build_runtime_plan(
+            config, mode_name="benchmark", condition_name="baseline"
+        )
+        improved_plan = build_runtime_plan(
+            config, mode_name="benchmark", condition_name="improved"
+        )
+        state = start_current_trial(
+            create_point_click_benchmark(config.benchmark), 10.0
+        )
         target = state.current_target
         self.assertIsNotNone(target)
         state = register_click(state, target.x, target.y, 11.0)
@@ -572,8 +582,12 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
     def test_cli_compare_sessions_generates_report(self):
         config = load_config(CONFIG_PATH)
-        baseline_plan = build_runtime_plan(config, mode_name="benchmark", condition_name="baseline")
-        improved_plan = build_runtime_plan(config, mode_name="benchmark", condition_name="improved")
+        baseline_plan = build_runtime_plan(
+            config, mode_name="benchmark", condition_name="baseline"
+        )
+        improved_plan = build_runtime_plan(
+            config, mode_name="benchmark", condition_name="improved"
+        )
         state = create_point_click_benchmark(config.benchmark)
 
         with tempfile.TemporaryDirectory() as tmpdir:
