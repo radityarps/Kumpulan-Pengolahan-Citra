@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 app_module = import_module("ai_virtual_mouse_experimental.app")
 baseline_module = import_module("ai_virtual_mouse_experimental.baseline")
+benchmark_shell_module = import_module("ai_virtual_mouse_experimental.benchmark_shell")
 cli_module = import_module("ai_virtual_mouse_experimental.cli")
 config_module = import_module("ai_virtual_mouse_experimental.config")
 tasks_backend_module = import_module("ai_virtual_mouse_experimental.tasks_backend")
@@ -19,6 +20,9 @@ StartupError = app_module.StartupError
 build_runtime_plan = app_module.build_runtime_plan
 build_baseline_metadata = baseline_module.build_baseline_metadata
 classify_baseline_gesture = baseline_module.classify_baseline_gesture
+benchmark_instruction_lines = benchmark_shell_module.benchmark_instruction_lines
+create_benchmark_shell_state = benchmark_shell_module.create_benchmark_shell_state
+move_simulated_cursor = benchmark_shell_module.move_simulated_cursor
 main = cli_module.main
 ConfigError = config_module.ConfigError
 load_config = config_module.load_config
@@ -117,6 +121,38 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertEqual(metadata.backend, "mediapipe_solutions")
         self.assertEqual(metadata.gesture_profile, "tutorial_pinch")
         self.assertIn("no_hand_guard", metadata.compatibility_fixes)
+
+    def test_benchmark_shell_state_uses_simulated_cursor_safely(self):
+        config = load_config(CONFIG_PATH)
+        plan = build_runtime_plan(config, mode_name="benchmark", condition_name="baseline")
+
+        state = create_benchmark_shell_state(config, plan)
+
+        self.assertEqual(state.condition, "baseline")
+        self.assertEqual(state.backend, "mediapipe_solutions")
+        self.assertFalse(state.controls_real_mouse)
+        self.assertEqual(state.cursor.x, config.benchmark.window_width / 2)
+
+    def test_benchmark_shell_instructions_include_safe_quit(self):
+        config = load_config(CONFIG_PATH)
+        plan = build_runtime_plan(config, mode_name="benchmark")
+        state = create_benchmark_shell_state(config, plan)
+
+        instructions = "\n".join(benchmark_instruction_lines(state))
+
+        self.assertIn("simulated cursor", instructions)
+        self.assertIn("does not move the OS mouse", instructions)
+        self.assertIn("Q or Escape", instructions)
+
+    def test_benchmark_shell_cursor_movement_is_clamped(self):
+        config = load_config(CONFIG_PATH)
+        plan = build_runtime_plan(config, mode_name="benchmark")
+        state = create_benchmark_shell_state(config, plan)
+
+        moved = move_simulated_cursor(state, -10_000, -10_000)
+
+        self.assertEqual(moved.cursor.x, moved.cursor.radius)
+        self.assertEqual(moved.cursor.y, moved.cursor.radius)
 
     def test_tasks_model_path_resolves_inside_project_root(self):
         path = resolve_model_path("models/hand_landmarker.task", Path("/tmp/project"))

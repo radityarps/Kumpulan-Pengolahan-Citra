@@ -102,11 +102,18 @@ def main(argv: list[str] | None = None) -> int:
 
     print(describe_plan(plan))
 
-    if plan.mode == "demo" and plan.condition == "baseline":
-        baseline = import_module("ai_virtual_mouse_experimental.baseline")
-        metadata = baseline.build_baseline_metadata(config, plan)
-        print(f"Baseline metadata: {metadata}")
-        return baseline.run_frozen_video_baseline(config, plan)
+    try:
+        if plan.mode == "benchmark":
+            benchmark_shell = import_module("ai_virtual_mouse_experimental.benchmark_shell")
+            return benchmark_shell.run_pygame_benchmark_shell(config, plan)
+
+        if plan.mode == "demo" and plan.condition == "baseline":
+            baseline = import_module("ai_virtual_mouse_experimental.baseline")
+            metadata = baseline.build_baseline_metadata(config, plan)
+            print(f"Baseline metadata: {metadata}")
+            return baseline.run_frozen_video_baseline(config, plan)
+    except RuntimeError as exc:
+        parser.exit(2, f"error: {exc}\n")
 
     print(
         "Skeleton startup complete. Runtime loop is intentionally not implemented "
