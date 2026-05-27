@@ -67,6 +67,7 @@ class HandTracker:
             min_tracking_confidence=0.5,
         )
         self._tasks_backend = vision.HandLandmarker.create_from_options(opts)
+        print(f"[INFO] MediaPipe Tasks backend initialized: {model_path}")
 
     def _setup_solutions_backend(self) -> None:
         hands = _import_mediapipe_hands()
@@ -77,6 +78,7 @@ class HandTracker:
             min_tracking_confidence=0.5,
         )
         self._drawing_utils = _import_mediapipe_drawing_utils()
+        print("[INFO] MediaPipe Solutions backend initialized")
 
     def process(self, frame: np.ndarray) -> HandTrackingResult:
         if self._backend_used == "mediapipe_tasks":

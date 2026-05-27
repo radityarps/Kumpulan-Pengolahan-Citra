@@ -38,7 +38,7 @@ python --version
 
 Expected output should be Python 3.11.x.
 
-### 3. Install dependencies
+### 3. Install baseline dependencies
 
 ```bash
 uv pip install -r requirements.txt
@@ -50,11 +50,30 @@ uv pip install -r requirements.txt
 python "video version/AiVirtualMouseProject.py"
 ```
 
-### 5. Run the experimental prototype
+### 5. Create separate environment for improved version (modern API)
+
+The improved version uses the latest MediaPipe with the Tasks API and newer dependencies. It should run in a separate virtual environment to avoid conflicts with the pinned baseline packages.
+
+```bash
+uv venv .venv-improved --python 3.11
+source .venv-improved/Scripts/activate
+uv pip install -r requirements-improved.txt
+```
+
+### 6. Run the experimental prototype
+
+From the baseline environment (`.venv`):
 
 ```bash
 PYTHONPATH=src python -m ai_virtual_mouse_experimental --help
 PYTHONPATH=src python -m ai_virtual_mouse_experimental --list
+```
+
+From the improved environment (`.venv-improved`):
+
+```bash
+source .venv-improved/Scripts/activate
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode demo --condition improved --allow-real-mouse
 ```
 
 The experimental benchmark uses Pygame. If benchmark mode reports that Pygame is missing, reinstall dependencies:
@@ -73,6 +92,16 @@ source .venv/Scripts/activate
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 python "video version/AiVirtualMouseProject.py"
+```
+
+For the improved version:
+
+```bash
+python3.11 -m venv .venv-improved
+source .venv-improved/Scripts/activate
+python -m pip install --upgrade pip
+pip install -r requirements-improved.txt
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode demo --condition improved --allow-real-mouse
 ```
 
 ## Verify Installation

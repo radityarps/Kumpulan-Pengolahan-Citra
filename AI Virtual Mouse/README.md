@@ -59,6 +59,27 @@ python "video version/AiVirtualMouseProject.py"
 
 If you have not created the virtual environment yet, follow [`docs/INSTALLATION.md`](docs/INSTALLATION.md).
 
+### Two environments
+
+The project uses **two virtual environments**:
+
+- `.venv` — baseline/tutorial version (pinned `mediapipe==0.10.14`, older numpy)
+- `.venv-improved` — modern improved version (`mediapipe>=0.10.30`, Tasks API, latest numpy)
+
+Create both:
+
+```bash
+# Baseline
+python -m venv .venv
+source .venv/Scripts/activate
+pip install -r requirements.txt
+
+# Improved
+python -m venv .venv-improved
+source .venv-improved/Scripts/activate
+pip install -r requirements-improved.txt
+```
+
 ## Experimental Prototype
 
 Issue #3 adds a safe experimental app skeleton that validates configuration, selects modes and research conditions, and starts without controlling the real OS mouse by default.
