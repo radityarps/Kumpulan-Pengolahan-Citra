@@ -11,6 +11,7 @@ camera_index = 0
 camera_width = 640
 camera_height = 480
 model_path = "models/hand_landmarker.task"
+model_url = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task"
 auto_download_model = false
 
 [modes.benchmark]

@@ -1,6 +1,8 @@
 import sys
+import tempfile
 import unittest
 from contextlib import redirect_stdout
+from dataclasses import replace
 from importlib import import_module
 from io import StringIO
 from pathlib import Path
@@ -11,6 +13,7 @@ app_module = import_module("ai_virtual_mouse_experimental.app")
 baseline_module = import_module("ai_virtual_mouse_experimental.baseline")
 cli_module = import_module("ai_virtual_mouse_experimental.cli")
 config_module = import_module("ai_virtual_mouse_experimental.config")
+tasks_backend_module = import_module("ai_virtual_mouse_experimental.tasks_backend")
 
 StartupError = app_module.StartupError
 build_runtime_plan = app_module.build_runtime_plan
@@ -19,6 +22,11 @@ classify_baseline_gesture = baseline_module.classify_baseline_gesture
 main = cli_module.main
 ConfigError = config_module.ConfigError
 load_config = config_module.load_config
+build_tasks_backend_metadata = tasks_backend_module.build_tasks_backend_metadata
+download_hand_landmarker_model = tasks_backend_module.download_hand_landmarker_model
+ensure_hand_landmarker_model = tasks_backend_module.ensure_hand_landmarker_model
+resolve_model_path = tasks_backend_module.resolve_model_path
+BackendError = tasks_backend_module.BackendError
 
 
 CONFIG_PATH = Path("config/experimental.toml")
@@ -71,6 +79,7 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertIn("Available modes", output.getvalue())
         self.assertIn("Available conditions", output.getvalue())
+        self.assertIn("MediaPipe Tasks backend", output.getvalue())
 
     def test_cli_exposes_selected_metadata(self):
         output = StringIO()
@@ -108,6 +117,50 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertEqual(metadata.backend, "mediapipe_solutions")
         self.assertEqual(metadata.gesture_profile, "tutorial_pinch")
         self.assertIn("no_hand_guard", metadata.compatibility_fixes)
+
+    def test_tasks_model_path_resolves_inside_project_root(self):
+        path = resolve_model_path("models/hand_landmarker.task", Path("/tmp/project"))
+
+        self.assertEqual(path, Path("/tmp/project/models/hand_landmarker.task"))
+
+    def test_tasks_backend_metadata_exposes_model_state(self):
+        config = load_config(CONFIG_PATH)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            metadata = build_tasks_backend_metadata(config, Path(tmpdir))
+
+        self.assertEqual(metadata.api_family, "mediapipe_tasks")
+        self.assertEqual(metadata.backend, "hand_landmarker")
+        self.assertFalse(metadata.model_exists)
+        self.assertIn("hand_landmarker.task", metadata.model_path)
+
+    def test_tasks_model_download_supports_file_url_for_reproducible_setup(self):
+        config = load_config(CONFIG_PATH)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            source = root / "source.task"
+            source.write_bytes(b"fake-model")
+            test_config = replace(
+                config,
+                backend=replace(
+                    config.backend,
+                    model_path="models/hand_landmarker.task",
+                    model_url=source.as_uri(),
+                ),
+            )
+
+            model_path = download_hand_landmarker_model(test_config, root)
+
+            self.assertEqual(model_path.read_bytes(), b"fake-model")
+
+    def test_tasks_model_missing_error_explains_download_command(self):
+        config = load_config(CONFIG_PATH)
+
+        with tempfile.TemporaryDirectory() as tmpdir, self.assertRaisesRegex(
+            BackendError, "--download-model"
+        ):
+            ensure_hand_landmarker_model(config, Path(tmpdir))
 
 
 if __name__ == "__main__":

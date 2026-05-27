@@ -45,6 +45,21 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print selected runtime metadata as JSON, then exit.",
     )
+    parser.add_argument(
+        "--download-model",
+        action="store_true",
+        help="Download the MediaPipe Tasks HandLandmarker model, then exit.",
+    )
+    parser.add_argument(
+        "--overwrite-model",
+        action="store_true",
+        help="Re-download the HandLandmarker model even when it already exists.",
+    )
+    parser.add_argument(
+        "--smoke-backend",
+        action="store_true",
+        help="Initialize the selected MediaPipe Tasks backend and print metadata.",
+    )
     return parser
 
 
@@ -58,6 +73,21 @@ def main(argv: list[str] | None = None) -> int:
             print(format_config_options(config))
             return 0
 
+        if args.download_model:
+            tasks_backend = import_module("ai_virtual_mouse_experimental.tasks_backend")
+            model_path = tasks_backend.download_hand_landmarker_model(
+                config,
+                overwrite=args.overwrite_model,
+            )
+            print(f"HandLandmarker model ready: {model_path}")
+            return 0
+
+        if args.smoke_backend:
+            tasks_backend = import_module("ai_virtual_mouse_experimental.tasks_backend")
+            metadata = tasks_backend.smoke_test_tasks_backend(config)
+            print(json.dumps(metadata.__dict__, indent=2, sort_keys=True))
+            return 0
+
         plan = build_runtime_plan(
             config=config,
             mode_name=args.mode,
@@ -67,7 +97,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.metadata:
             print(json.dumps(plan.metadata, indent=2, sort_keys=True))
             return 0
-    except (ConfigError, StartupError) as exc:
+    except (ConfigError, StartupError, RuntimeError) as exc:
         parser.exit(2, f"error: {exc}\n")
 
     print(describe_plan(plan))
@@ -90,6 +120,12 @@ def format_config_options(config) -> str:
     for name, mode in sorted(config.modes.items()):
         lines.append(f"- {name}: {mode.description}")
 
+    lines.append("")
+    tasks_backend = import_module("ai_virtual_mouse_experimental.tasks_backend")
+    metadata = tasks_backend.build_tasks_backend_metadata(config)
+    lines.append("MediaPipe Tasks backend:")
+    lines.append(f"- model path: {metadata.model_path}")
+    lines.append(f"- model exists: {metadata.model_exists}")
     lines.append("")
     lines.append("Available conditions:")
     for name, condition in sorted(config.conditions.items()):

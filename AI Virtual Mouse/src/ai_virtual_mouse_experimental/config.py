@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
-import tomllib
 
 
 class ConfigError(ValueError):
@@ -25,6 +25,7 @@ class BackendSettings:
     camera_width: int
     camera_height: int
     model_path: str
+    model_url: str
     auto_download_model: bool
 
 
