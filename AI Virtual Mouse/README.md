@@ -14,6 +14,7 @@ AI Virtual Mouse is a Python computer-vision project that controls the system mo
 - Cursor smoothing to reduce jitter
 - Visual feedback for tracking region, landmarks, and click state
 - Safe handling for missing camera frames and no-hand frames
+- Experimental benchmark modes with CSV logs, SVG plots, Markdown reports, and comparison reports
 
 ## Project Structure
 
@@ -26,7 +27,12 @@ AI Virtual Mouse/
 │   ├── INSTALLATION.md
 │   ├── USER_GUIDE.md
 │   ├── TROUBLESHOOTING.md
+│   ├── BENCHMARK_METHODOLOGY.md
 │   └── DEVELOPMENT.md
+├── src/
+│   └── ai_virtual_mouse_experimental/
+├── config/
+│   └── experimental.toml
 └── video version/
     ├── AiVirtualMouseProject.py
     └── HandTrackingModule.py
@@ -71,7 +77,17 @@ On Windows PowerShell:
 $env:PYTHONPATH='src'; .venv\Scripts\python.exe -m ai_virtual_mouse_experimental --list
 ```
 
-The default mode is `benchmark` with the `baseline` condition. Real OS mouse control is rejected unless a future runtime explicitly opts into `--allow-real-mouse`.
+The default mode is `benchmark` with the `baseline` condition. Benchmark mode uses a simulated cursor and does not move the real OS mouse.
+
+Run condition comparisons:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark --condition baseline
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark --condition improved
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --compare-sessions outputs/sessions/session-a outputs/sessions/session-b
+```
+
+Real OS mouse control is rejected unless a future runtime explicitly opts into `--allow-real-mouse`.
 
 ## Gesture Summary
 
@@ -110,6 +126,7 @@ Experimental runtime settings are defined in `config/experimental.toml`, includi
 - [Architecture](docs/ARCHITECTURE.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Development Guide](docs/DEVELOPMENT.md)
+- [Benchmark Methodology](docs/BENCHMARK_METHODOLOGY.md)
 - [Experimental Prototype PRD](docs/PRD_EXPERIMENTAL_RESEARCH_PROTOTYPE.md)
 
 ## Known Limitations

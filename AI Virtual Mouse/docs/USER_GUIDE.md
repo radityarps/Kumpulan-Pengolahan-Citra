@@ -93,6 +93,46 @@ if length < 40:
 - Lower value: click requires fingertips to be closer.
 - Higher value: click triggers more easily.
 
+## Experimental Prototype Modes
+
+Run from `AI Virtual Mouse/`:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --list
+```
+
+Available benchmark conditions:
+
+- `baseline`: frozen tutorial behavior.
+- `smoothing_only`: adaptive smoothing ablation.
+- `debounce_only`: click debouncing ablation.
+- `calibration_only`: calibrated mapping ablation.
+- `improved`: full improved condition.
+
+Run the same benchmark with a selected condition:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark --condition baseline
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark --condition improved
+```
+
+Benchmark mode uses a simulated cursor inside Pygame and does not move the OS mouse. Use arrow keys/WASD to move the placeholder cursor and Space/left click to click targets until hand-input wiring is expanded.
+
+## Benchmark Outputs
+
+Each benchmark session creates:
+
+- `metadata.json`
+- `trials.csv`
+- `completion_times.svg`
+- `report.md`
+
+Compare saved sessions:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --compare-sessions outputs/sessions/session-a outputs/sessions/session-b
+```
+
 ## Safety Notes
 
-Because the script controls the real system cursor, keep a physical mouse or touchpad available while testing. Use `q` to exit, or close the terminal if the pointer becomes difficult to control.
+Because the tutorial demo controls the real system cursor, keep a physical mouse or touchpad available while testing. Benchmark mode is safer because it uses a simulated cursor. Use `q` or Escape to exit benchmark windows.

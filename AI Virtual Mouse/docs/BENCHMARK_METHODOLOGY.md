@@ -30,6 +30,30 @@ Generate a comparison report from saved sessions:
 PYTHONPATH=src python -m ai_virtual_mouse_experimental --compare-sessions outputs/sessions/session-a outputs/sessions/session-b
 ```
 
+## Generated Metrics
+
+Each report includes:
+
+- total trials,
+- hits and misses,
+- hit rate,
+- false clicks,
+- total click count,
+- mean and median completion time,
+- jitter estimate based on target-center click distance,
+- mean FPS when available.
+
+Generated artifacts per session:
+
+- `metadata.json`: condition, backend, mode, benchmark parameters, gesture parameters, debounce parameters, and output paths.
+- `trials.csv`: trial-level target/click/outcome rows.
+- `completion_times.svg`: completion-time plot.
+- `report.md`: session-level Markdown report.
+
+## Automated Test Coverage
+
+Pure logic has automated tests for target generation, benchmark trial state, CSV/session logging, metrics/report generation, gesture classification, calibration mapping, adaptive smoothing, and click debouncing. Camera and OS mouse behavior remain boundary integrations and should be smoke-tested manually.
+
 ## Interpretation Limits
 
 The benchmark measures controlled point-and-click usability. It can support claims about this benchmark task, such as completion time, hit rate, false clicks, and target-center click distance. It should not be used alone to claim that the virtual mouse is superior to a physical mouse or universally better for all desktop tasks.

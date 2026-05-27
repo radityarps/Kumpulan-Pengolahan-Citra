@@ -129,6 +129,43 @@ Improve input conditions:
 - Keep only one hand visible.
 - Avoid motion blur from fast movements.
 
+## `Pygame is required for benchmark mode`
+
+Cause: benchmark mode depends on Pygame.
+
+Fix:
+
+```bash
+pip install -r requirements.txt
+```
+
+Then retry:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark
+```
+
+## `HandLandmarker model not found`
+
+Cause: the MediaPipe Tasks model has not been downloaded.
+
+Fix:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --download-model
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --smoke-backend
+```
+
+## Benchmark session has empty CSV
+
+Cause: the benchmark was exited before any target was completed.
+
+Fix: complete at least one target before quitting. The report generator still works with empty data, but metrics will show zero hits.
+
+## Comparison report seems unfair
+
+Check that compared sessions use the same benchmark parameters: target count, radius, window size, and random seed. Only the condition should differ.
+
 ## How to stop the app
 
-Press `q` while the OpenCV window is focused. If that does not work, return to the terminal and press `Ctrl+C`.
+Press `q` while the OpenCV window is focused. In benchmark mode, press `q` or Escape. If that does not work, return to the terminal and press `Ctrl+C`.
