@@ -87,7 +87,29 @@ PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark --condit
 PYTHONPATH=src python -m ai_virtual_mouse_experimental --compare-sessions outputs/sessions/session-a outputs/sessions/session-b
 ```
 
-Real OS mouse control is rejected unless a future runtime explicitly opts into `--allow-real-mouse`.
+### Real Mouse Runtime
+
+The modern **Real Mouse Runtime** controls the actual OS cursor using your webcam and hand gestures. It uses MediaPipe Tasks as the primary backend and falls back to MediaPipe Solutions with a visible warning if Tasks cannot initialize.
+
+Run the improved real mouse demo:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode demo --condition improved --allow-real-mouse
+```
+
+Run the frozen video baseline demo:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode demo --condition baseline --allow-real-mouse
+```
+
+**Safety controls:**
+
+- Press `q` in the camera window to exit.
+- Hold open palm for ~0.3s to toggle pause/unpause.
+- Move cursor to a screen corner and hold for ~0.8s to trigger pause.
+
+The real mouse runtime includes an overlay showing active gesture, paused state, backend used, and FPS.
 
 ## Gesture Summary
 
@@ -96,7 +118,9 @@ Real OS mouse control is rejected unless a future runtime explicitly opts into `
 | Index finger up only | Move cursor |
 | Index + middle finger up | Click mode |
 | Index + middle fingertips close together | Left click |
+| Open palm hold | Toggle pause/unpause |
 | Press `q` in the OpenCV window | Exit application |
+| Hold cursor in corner | Pause failsafe |
 
 See [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) for full operating instructions.
 

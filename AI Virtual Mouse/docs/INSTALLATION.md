@@ -94,6 +94,16 @@ print('Pygame:', pygame.version.ver)
 PY
 ```
 
+## Run the Modern Real Mouse Demo
+
+After installing dependencies and optionally downloading the Tasks model:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode demo --condition improved --allow-real-mouse
+```
+
+Use `--condition baseline` to run the frozen video tutorial version instead.
+
 ## MediaPipe Tasks Model Download
 
 The improved backend uses MediaPipe Tasks HandLandmarker metadata. Download the model with:

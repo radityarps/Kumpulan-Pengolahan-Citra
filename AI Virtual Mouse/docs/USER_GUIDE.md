@@ -93,6 +93,50 @@ if length < 40:
 - Lower value: click requires fingertips to be closer.
 - Higher value: click triggers more easily.
 
+## Real Mouse Runtime
+
+The modern Real Mouse Runtime uses your webcam to control the actual OS cursor. It supports the **Simple Real Mouse Profile**: move, stable pinch click, and pause toggle. Drag and scroll are not enabled in the first real mouse program.
+
+Run the improved real mouse demo:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode demo --condition improved --allow-real-mouse
+```
+
+Run the frozen video baseline demo:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode demo --condition baseline --allow-real-mouse
+```
+
+The runtime uses MediaPipe Tasks as the primary backend. If Tasks fails to initialize, it falls back to MediaPipe Solutions and displays a warning in the overlay.
+
+### Real Mouse Gestures
+
+- **Move**: raise only the index finger. The cursor follows the index fingertip.
+- **Click**: raise index and middle fingers, then bring fingertips close together. One stable pinch emits one left click.
+- **Pause**: hold an open palm for about 0.3 seconds to toggle paused/unpaused. While paused, cursor movement and clicks are ignored.
+
+### Safety Controls
+
+- Press `q` in the camera window to exit immediately.
+- Hold open palm to toggle pause.
+- Move the cursor to a screen corner and hold for about 0.8 seconds to trigger the corner failsafe, which pauses the runtime.
+
+The overlay shows active gesture, pause state, backend used, and FPS.
+
+### Real Mouse Smoke Test Checklist
+
+Before trusting the real mouse runtime for a demo, verify each behavior manually:
+
+1. **Startup**: run `PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode demo --condition improved --allow-real-mouse`. The camera window opens and the overlay appears.
+2. **Move**: raise only the index finger. The OS cursor follows the index fingertip.
+3. **Stable Pinch Click**: raise index and middle fingers, then bring fingertips close together. One left click happens. Releasing and re-pinching emits another click after the configured debounce frames.
+4. **Pause Toggle**: hold an open palm steady for about 0.3 seconds. The overlay shows "Paused". Cursor movement and clicks stop. Hold open palm again to resume.
+5. **Quit**: press `q` while the camera window is focused. The app exits cleanly.
+6. **Corner Failsafe**: while unpaused, move the cursor to a screen corner and hold it there for about 0.8 seconds. The runtime should pause automatically.
+7. **Backend Fallback**: if the Tasks model is missing, the overlay should show a fallback warning and the runtime should continue using the Solutions backend.
+
 ## Experimental Prototype Modes
 
 Run from `AI Virtual Mouse/`:
@@ -116,7 +160,7 @@ PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark --condit
 PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark --condition improved
 ```
 
-Benchmark mode uses a simulated cursor inside Pygame and does not move the OS mouse. Use arrow keys/WASD to move the placeholder cursor and Space/left click to click targets until hand-input wiring is expanded.
+Benchmark mode uses a simulated cursor inside Pygame and does not move the OS mouse. Use arrow keys/WASD to move the placeholder cursor and Space/left click to click targets.
 
 ## Benchmark Outputs
 

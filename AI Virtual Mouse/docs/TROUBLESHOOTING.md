@@ -166,6 +166,51 @@ Fix: complete at least one target before quitting. The report generator still wo
 
 Check that compared sessions use the same benchmark parameters: target count, radius, window size, and random seed. Only the condition should differ.
 
+## Real Mouse Runtime falls back to MediaPipe Solutions
+
+Cause: the MediaPipe Tasks HandLandmarker model is missing or Tasks initialization failed.
+
+Fix:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --download-model
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --smoke-backend
+```
+
+If fallback still occurs, the runtime remains usable but uses the older Solutions backend. The overlay shows the fallback reason.
+
+## Real mouse cursor moves uncontrollably
+
+Cause: hand tracking is unstable or the mapping bounds are too wide.
+
+Fixes:
+
+1. Toggle pause with an open-palm hold.
+2. Move the cursor to a screen corner to trigger the corner failsafe.
+3. Press `q` to exit.
+4. Re-run after improving lighting or reducing camera motion.
+
+## Pause toggle does not work
+
+Cause: open palm is not detected.
+
+Fixes:
+
+1. Make sure all four fingers (index, middle, ring, pinky) are extended and visible.
+2. Hold the open palm steady for at least 0.3 seconds.
+3. Check the overlay feedback label; it should say "Paused" when open palm is detected.
+
+## Real Mouse Runtime camera window does not open
+
+Cause: camera index is wrong or another app is using the webcam.
+
+Fixes:
+
+1. Try camera index `0`, `1`, or `2` in `config/experimental.toml` under `[backend] camera_index`.
+2. Close Zoom, Teams, browser camera tabs, or other camera apps.
+3. Check Windows camera privacy settings.
+4. Reconnect external webcam.
+
 ## How to stop the app
 
 Press `q` while the OpenCV window is focused. In benchmark mode, press `q` or Escape. If that does not work, return to the terminal and press `Ctrl+C`.

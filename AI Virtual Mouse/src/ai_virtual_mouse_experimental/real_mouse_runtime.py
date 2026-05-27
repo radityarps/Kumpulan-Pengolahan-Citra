@@ -66,7 +66,10 @@ def update_pause_toggle(
 ) -> PauseToggleResult:
     if open_palm_active:
         next_hold_frames = state.hold_frames + 1
-        if not state.toggled_this_hold and next_hold_frames >= state.toggle_threshold_frames:
+        if (
+            not state.toggled_this_hold
+            and next_hold_frames >= state.toggle_threshold_frames
+        ):
             return PauseToggleResult(
                 state=PauseToggleState(
                     holding=True,
@@ -121,7 +124,9 @@ def check_safety(state: SafetyState, cursor_x: float, cursor_y: float) -> Safety
     )
 
 
-def build_real_mouse_metadata(config: ExperimentalConfig, plan: RuntimePlan) -> dict[str, Any]:
+def build_real_mouse_metadata(
+    config: ExperimentalConfig, plan: RuntimePlan
+) -> dict[str, Any]:
     condition = config.get_condition(plan.condition)
     return {
         "condition": plan.condition,
@@ -142,7 +147,9 @@ def build_real_mouse_metadata(config: ExperimentalConfig, plan: RuntimePlan) -> 
     }
 
 
-def _hand_input_from_tracking(result: HandTrackingResult, config: GestureEngineConfig) -> GestureInput:
+def _hand_input_from_tracking(
+    result: HandTrackingResult, config: GestureEngineConfig
+) -> GestureInput:
     fingers = result.fingers_up or []
     if len(fingers) < 5:
         return GestureInput()
@@ -161,7 +168,6 @@ def _hand_input_from_tracking(result: HandTrackingResult, config: GestureEngineC
 def run_real_mouse_runtime(config: ExperimentalConfig, plan: RuntimePlan) -> int:
     cv2 = import_module("cv2")
     autopy = import_module("autopy")
-
 
     metadata = build_real_mouse_metadata(config, plan)
     print(f"Real Mouse Runtime metadata: {metadata}")
@@ -276,7 +282,13 @@ def run_real_mouse_runtime(config: ExperimentalConfig, plan: RuntimePlan) -> int
 
         for i, line in enumerate(overlay_lines):
             cv2.putText(
-                image, line, (10, 30 + i * 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2
+                image,
+                line,
+                (10, 30 + i * 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 0),
+                2,
             )
 
         cv2.imshow("Real Mouse Runtime", image)

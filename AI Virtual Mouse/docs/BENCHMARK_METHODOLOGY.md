@@ -54,6 +54,10 @@ Generated artifacts per session:
 
 Pure logic has automated tests for target generation, benchmark trial state, CSV/session logging, metrics/report generation, gesture classification, calibration mapping, adaptive smoothing, and click debouncing. Camera and OS mouse behavior remain boundary integrations and should be smoke-tested manually.
 
+## Real Mouse Runtime vs Benchmark Runtime
+
+The **Real Mouse Runtime** controls the actual OS cursor and is used for the live demo. The **Benchmark Runtime** uses a simulated cursor inside Pygame and is used for controlled measurement. They share the same hand-control pipeline where practical, but the benchmark does not move the OS mouse for safety and measurement accuracy.
+
 ## Interpretation Limits
 
 The benchmark measures controlled point-and-click usability. It can support claims about this benchmark task, such as completion time, hit rate, false clicks, and target-center click distance. It should not be used alone to claim that the virtual mouse is superior to a physical mouse or universally better for all desktop tasks.

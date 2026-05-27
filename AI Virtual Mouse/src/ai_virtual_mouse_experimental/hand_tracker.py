@@ -112,6 +112,7 @@ class HandTracker:
 
     def _process_solutions(self, frame: np.ndarray) -> HandTrackingResult:
         import cv2
+
         assert self._solutions_backend is not None
         results = self._solutions_backend.process(
             cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -124,9 +125,7 @@ class HandTracker:
             )
         h, w = frame.shape[:2]
         hand_landmarks = results.multi_hand_landmarks[0]
-        points = [
-            Point(lm.x * w, lm.y * h) for lm in hand_landmarks.landmark
-        ]
+        points = [Point(lm.x * w, lm.y * h) for lm in hand_landmarks.landmark]
         fingers = _fingers_up_solutions(hand_landmarks)
         pinch = math.hypot(points[4].x - points[8].x, points[4].y - points[8].y)
         delta = points[8].y - points[12].y if len(points) > 12 else 0.0
@@ -139,22 +138,30 @@ class HandTracker:
             backend_used=self._backend_used,
         )
 
-    def draw_landmarks(self, image: np.ndarray, result: HandTrackingResult) -> np.ndarray:
+    def draw_landmarks(
+        self, image: np.ndarray, result: HandTrackingResult
+    ) -> np.ndarray:
         if not result.success or result.landmarks is None:
             return image
         if self._backend_used == "mediapipe_tasks":
             return self._draw_tasks_landmarks(image, result)
         return self._draw_solutions_landmarks(image, result)
 
-    def _draw_tasks_landmarks(self, image: np.ndarray, result: HandTrackingResult) -> np.ndarray:
+    def _draw_tasks_landmarks(
+        self, image: np.ndarray, result: HandTrackingResult
+    ) -> np.ndarray:
         import cv2
+
         assert result.landmarks is not None
         for point in result.landmarks:
             cv2.circle(image, (int(point.x), int(point.y)), 3, (0, 255, 0), -1)
         return image
 
-    def _draw_solutions_landmarks(self, image: np.ndarray, result: HandTrackingResult) -> np.ndarray:
+    def _draw_solutions_landmarks(
+        self, image: np.ndarray, result: HandTrackingResult
+    ) -> np.ndarray:
         import cv2
+
         mp_hands = _import_mediapipe_hands()
         h, w = image.shape[:2]
         connections = mp_hands.HAND_CONNECTIONS
