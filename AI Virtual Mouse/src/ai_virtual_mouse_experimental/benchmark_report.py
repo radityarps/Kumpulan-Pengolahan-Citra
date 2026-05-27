@@ -37,13 +37,17 @@ def load_metadata(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def compute_metrics(rows: list[dict[str, str]], metadata: dict[str, Any] | None = None) -> BenchmarkMetrics:
+def compute_metrics(
+    rows: list[dict[str, str]], metadata: dict[str, Any] | None = None
+) -> BenchmarkMetrics:
     benchmark = (metadata or {}).get("benchmark", {})
     expected_trials = int(benchmark.get("target_count") or len(rows))
     hit_rows = [row for row in rows if row.get("hit") == "True"]
     hit_count = len(hit_rows)
     miss_count = max(0, expected_trials - hit_count)
-    false_clicks = sum(int(float(row.get("false_clicks_before_hit") or 0)) for row in rows)
+    false_clicks = sum(
+        int(float(row.get("false_clicks_before_hit") or 0)) for row in rows
+    )
     completion_times = [float(row.get("completion_time_s") or 0.0) for row in hit_rows]
     distances = [
         _distance(
@@ -64,7 +68,9 @@ def compute_metrics(rows: list[dict[str, str]], metadata: dict[str, Any] | None 
         false_clicks=false_clicks,
         click_count=hit_count + false_clicks,
         mean_completion_time_s=_mean(completion_times),
-        median_completion_time_s=statistics.median(completion_times) if completion_times else 0.0,
+        median_completion_time_s=statistics.median(completion_times)
+        if completion_times
+        else 0.0,
         jitter_estimate_px=_mean(distances),
         fps_mean=_mean(fps_values) if fps_values else None,
     )
@@ -96,7 +102,7 @@ def generate_completion_time_svg(rows: list[dict[str, str]], output_path: Path) 
   <text x="{padding}" y="28" fill="#f0f6fc" font-family="Arial" font-size="18">Completion Time per Hit Trial</text>
   <line x1="{padding}" y1="{height - padding}" x2="{width - padding}" y2="{height - padding}" stroke="#8b949e" />
   <line x1="{padding}" y1="{padding}" x2="{padding}" y2="{height - padding}" stroke="#8b949e" />
-  {''.join(bars)}
+  {"".join(bars)}
   <text x="{padding}" y="{height - 14}" fill="#8b949e" font-family="Arial" font-size="12">trial index</text>
   <text x="{width - padding - 120}" y="{padding}" fill="#8b949e" font-family="Arial" font-size="12">max {max_value:.2f}s</text>
 </svg>
@@ -111,25 +117,27 @@ def generate_markdown_report(
     plot_path: Path,
     output_path: Path,
 ) -> Path:
-    fps_value = "not captured" if metrics.fps_mean is None else f"{metrics.fps_mean:.2f}"
+    fps_value = (
+        "not captured" if metrics.fps_mean is None else f"{metrics.fps_mean:.2f}"
+    )
     benchmark = metadata.get("benchmark", {})
     content = f"""# AI Virtual Mouse Benchmark Report
 
 ## Session
 
-- Session ID: `{metadata.get('session_id', 'unknown')}`
-- Condition: `{metadata.get('condition', 'unknown')}`
-- Backend: `{metadata.get('backend', 'unknown')}`
-- Mode: `{metadata.get('mode', 'unknown')}`
-- Created at UTC: `{metadata.get('created_at_utc', 'unknown')}`
+- Session ID: `{metadata.get("session_id", "unknown")}`
+- Condition: `{metadata.get("condition", "unknown")}`
+- Backend: `{metadata.get("backend", "unknown")}`
+- Mode: `{metadata.get("mode", "unknown")}`
+- Created at UTC: `{metadata.get("created_at_utc", "unknown")}`
 
 ## Benchmark Parameters
 
-- Benchmark: `{benchmark.get('name', 'unknown')}`
-- Target count: `{benchmark.get('target_count', 'unknown')}`
-- Target radius: `{benchmark.get('target_radius', 'unknown')}`
-- Window: `{benchmark.get('window_width', 'unknown')} x {benchmark.get('window_height', 'unknown')}`
-- Random seed: `{benchmark.get('random_seed', 'unknown')}`
+- Benchmark: `{benchmark.get("name", "unknown")}`
+- Target count: `{benchmark.get("target_count", "unknown")}`
+- Target radius: `{benchmark.get("target_radius", "unknown")}`
+- Window: `{benchmark.get("window_width", "unknown")} x {benchmark.get("window_height", "unknown")}`
+- Random seed: `{benchmark.get("random_seed", "unknown")}`
 
 ## Summary Metrics
 
@@ -165,7 +173,9 @@ def generate_report_from_session(session_dir: Path) -> BenchmarkReportPaths:
     rows = load_trials_csv(trials_path)
     metrics = compute_metrics(rows, metadata)
     plot_path = generate_completion_time_svg(rows, session_dir / "completion_times.svg")
-    report_path = generate_markdown_report(metadata, metrics, plot_path, session_dir / "report.md")
+    report_path = generate_markdown_report(
+        metadata, metrics, plot_path, session_dir / "report.md"
+    )
     return BenchmarkReportPaths(report_path=report_path, completion_plot_path=plot_path)
 
 

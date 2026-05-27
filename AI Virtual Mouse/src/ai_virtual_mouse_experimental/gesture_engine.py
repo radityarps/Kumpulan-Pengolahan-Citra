@@ -107,7 +107,10 @@ def is_open_palm(hand: GestureInput) -> bool:
 
 
 def is_pinching(hand: GestureInput, config: GestureEngineConfig) -> bool:
-    return hand.pinch_distance_px is not None and hand.pinch_distance_px < config.click_threshold_px
+    return (
+        hand.pinch_distance_px is not None
+        and hand.pinch_distance_px < config.click_threshold_px
+    )
 
 
 def feedback_style(result: GestureResult) -> dict[str, object]:

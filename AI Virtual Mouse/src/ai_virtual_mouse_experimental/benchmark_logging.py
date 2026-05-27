@@ -107,7 +107,9 @@ def write_session_metadata(
     paths: BenchmarkSessionPaths,
 ) -> Path:
     metadata = build_session_metadata(config, plan, paths)
-    paths.metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True), encoding="utf-8")
+    paths.metadata_path.write_text(
+        json.dumps(metadata, indent=2, sort_keys=True), encoding="utf-8"
+    )
     return paths.metadata_path
 
 
@@ -168,7 +170,9 @@ def persist_benchmark_session(
     write_session_metadata(config, plan, paths)
     write_trials_csv(state, config, plan, paths)
     if generate_report:
-        benchmark_report = import_module("ai_virtual_mouse_experimental.benchmark_report")
+        benchmark_report = import_module(
+            "ai_virtual_mouse_experimental.benchmark_report"
+        )
         benchmark_report.generate_report_from_session(paths.session_dir)
     return paths
 

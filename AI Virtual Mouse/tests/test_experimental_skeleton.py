@@ -14,11 +14,16 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 app_module = import_module("ai_virtual_mouse_experimental.app")
 baseline_module = import_module("ai_virtual_mouse_experimental.baseline")
 benchmark_grid_module = import_module("ai_virtual_mouse_experimental.benchmark_grid")
-benchmark_logging_module = import_module("ai_virtual_mouse_experimental.benchmark_logging")
-benchmark_report_module = import_module("ai_virtual_mouse_experimental.benchmark_report")
+benchmark_logging_module = import_module(
+    "ai_virtual_mouse_experimental.benchmark_logging"
+)
+benchmark_report_module = import_module(
+    "ai_virtual_mouse_experimental.benchmark_report"
+)
 benchmark_shell_module = import_module("ai_virtual_mouse_experimental.benchmark_shell")
 cli_module = import_module("ai_virtual_mouse_experimental.cli")
 config_module = import_module("ai_virtual_mouse_experimental.config")
+cursor_mapping_module = import_module("ai_virtual_mouse_experimental.cursor_mapping")
 gesture_engine_module = import_module("ai_virtual_mouse_experimental.gesture_engine")
 tasks_backend_module = import_module("ai_virtual_mouse_experimental.tasks_backend")
 
@@ -42,6 +47,16 @@ load_trials_csv = benchmark_report_module.load_trials_csv
 main = cli_module.main
 ConfigError = config_module.ConfigError
 load_config = config_module.load_config
+Bounds = cursor_mapping_module.Bounds
+CalibrationConfig = cursor_mapping_module.CalibrationConfig
+Point = cursor_mapping_module.Point
+SmoothingConfig = cursor_mapping_module.SmoothingConfig
+adaptive_smooth = cursor_mapping_module.adaptive_smooth
+apply_smoothing = cursor_mapping_module.apply_smoothing
+calibrate_bounds = cursor_mapping_module.calibrate_bounds
+default_camera_bounds = cursor_mapping_module.default_camera_bounds
+map_point_to_output = cursor_mapping_module.map_point_to_output
+select_mapping_bounds = cursor_mapping_module.select_mapping_bounds
 GestureEngineConfig = gesture_engine_module.GestureEngineConfig
 GestureInput = gesture_engine_module.GestureInput
 classify_improved_gesture = gesture_engine_module.classify_improved_gesture
@@ -217,14 +232,20 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
     def test_benchmark_logging_creates_session_metadata_and_csv(self):
         config = load_config(CONFIG_PATH)
-        plan = build_runtime_plan(config, mode_name="benchmark", condition_name="baseline")
-        state = start_current_trial(create_point_click_benchmark(config.benchmark), 10.0)
+        plan = build_runtime_plan(
+            config, mode_name="benchmark", condition_name="baseline"
+        )
+        state = start_current_trial(
+            create_point_click_benchmark(config.benchmark), 10.0
+        )
         target = state.current_target
         self.assertIsNotNone(target)
         state = register_click(state, target.x, target.y, 12.0)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            paths = persist_benchmark_session(state, config, plan, output_root=Path(tmpdir))
+            paths = persist_benchmark_session(
+                state, config, plan, output_root=Path(tmpdir)
+            )
             metadata = json.loads(paths.metadata_path.read_text(encoding="utf-8"))
             with paths.trials_csv_path.open(newline="", encoding="utf-8") as csv_file:
                 rows = list(csv.DictReader(csv_file))
@@ -238,11 +259,15 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
     def test_benchmark_logging_works_for_improved_placeholder(self):
         config = load_config(CONFIG_PATH)
-        plan = build_runtime_plan(config, mode_name="benchmark", condition_name="improved")
+        plan = build_runtime_plan(
+            config, mode_name="benchmark", condition_name="improved"
+        )
         state = create_point_click_benchmark(config.benchmark)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            paths = persist_benchmark_session(state, config, plan, output_root=Path(tmpdir))
+            paths = persist_benchmark_session(
+                state, config, plan, output_root=Path(tmpdir)
+            )
             metadata = json.loads(paths.metadata_path.read_text(encoding="utf-8"))
 
         self.assertEqual(metadata["condition"], "improved")
@@ -254,7 +279,9 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         state = create_point_click_benchmark(config.benchmark)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            paths = persist_benchmark_session(state, config, plan, output_root=Path(tmpdir))
+            paths = persist_benchmark_session(
+                state, config, plan, output_root=Path(tmpdir)
+            )
 
         formatted = format_output_paths(paths)
 
@@ -264,15 +291,21 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
     def test_benchmark_metrics_and_report_are_generated_from_session(self):
         config = load_config(CONFIG_PATH)
-        plan = build_runtime_plan(config, mode_name="benchmark", condition_name="baseline")
-        state = start_current_trial(create_point_click_benchmark(config.benchmark), 10.0)
+        plan = build_runtime_plan(
+            config, mode_name="benchmark", condition_name="baseline"
+        )
+        state = start_current_trial(
+            create_point_click_benchmark(config.benchmark), 10.0
+        )
         target = state.current_target
         self.assertIsNotNone(target)
         state = register_click(state, 0, 0, 11.0)
         state = register_click(state, target.x, target.y, 13.0)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            paths = persist_benchmark_session(state, config, plan, output_root=Path(tmpdir))
+            paths = persist_benchmark_session(
+                state, config, plan, output_root=Path(tmpdir)
+            )
             report_paths = generate_report_from_session(paths.session_dir)
             rows = load_trials_csv(paths.trials_csv_path)
             metadata = json.loads(paths.metadata_path.read_text(encoding="utf-8"))
@@ -289,8 +322,12 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
     def test_cli_generates_report_from_existing_session(self):
         config = load_config(CONFIG_PATH)
-        plan = build_runtime_plan(config, mode_name="benchmark", condition_name="baseline")
-        state = start_current_trial(create_point_click_benchmark(config.benchmark), 10.0)
+        plan = build_runtime_plan(
+            config, mode_name="benchmark", condition_name="baseline"
+        )
+        state = start_current_trial(
+            create_point_click_benchmark(config.benchmark), 10.0
+        )
         target = state.current_target
         self.assertIsNotNone(target)
         state = register_click(state, target.x, target.y, 11.5)
@@ -362,7 +399,69 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
         engine_config = config_from_settings(config.gesture)
 
-        self.assertEqual(engine_config.click_threshold_px, config.gesture.click_threshold_px)
+        self.assertEqual(
+            engine_config.click_threshold_px, config.gesture.click_threshold_px
+        )
+
+    def test_calibration_captures_comfortable_tracking_region(self):
+        bounds = calibrate_bounds(
+            [Point(120, 140), Point(420, 360)], CalibrationConfig(margin_px=20)
+        )
+
+        self.assertEqual(bounds.left, 100)
+        self.assertEqual(bounds.top, 120)
+        self.assertEqual(bounds.right, 440)
+        self.assertEqual(bounds.bottom, 380)
+
+    def test_cursor_mapping_uses_calibrated_bounds_when_enabled(self):
+        fallback = default_camera_bounds(640, 480)
+        calibrated = Bounds(left=100, top=100, right=500, bottom=400)
+
+        selected = select_mapping_bounds(True, calibrated, fallback)
+        mapped = map_point_to_output(Point(300, 250), selected, 1000, 600)
+
+        self.assertEqual(selected, calibrated)
+        self.assertEqual(mapped, Point(500, 300))
+
+    def test_cursor_mapping_falls_back_without_calibration(self):
+        fallback = Bounds(left=0, top=0, right=100, bottom=100)
+        calibrated = Bounds(left=20, top=20, right=80, bottom=80)
+
+        selected = select_mapping_bounds(False, calibrated, fallback)
+
+        self.assertEqual(selected, fallback)
+
+    def test_adaptive_smoothing_preserves_large_movement_responsiveness(self):
+        previous = Point(0, 0)
+        small_target = Point(10, 0)
+        large_target = Point(300, 0)
+        config = SmoothingConfig(min_factor=2, max_factor=10, fast_movement_threshold_px=300)
+
+        small_step = adaptive_smooth(previous, small_target, config)
+        large_step = adaptive_smooth(previous, large_target, config)
+
+        self.assertLess(small_step.x, 2)
+        self.assertGreater(large_step.x, 100)
+
+    def test_ablation_modes_for_smoothing_and_calibration_are_selectable(self):
+        config = load_config(CONFIG_PATH)
+        smoothing_plan = build_runtime_plan(config, condition_name="smoothing_only")
+        calibration_plan = build_runtime_plan(config, condition_name="calibration_only")
+
+        self.assertEqual(smoothing_plan.metadata["smoothing_strategy"], "adaptive")
+        self.assertFalse(smoothing_plan.metadata["calibration_enabled"])
+        self.assertEqual(calibration_plan.metadata["smoothing_strategy"], "fixed")
+        self.assertTrue(calibration_plan.metadata["calibration_enabled"])
+
+    def test_apply_smoothing_dispatches_strategy(self):
+        previous = Point(0, 0)
+        target = Point(70, 0)
+
+        fixed = apply_smoothing("fixed", previous, target, SmoothingConfig(fixed_factor=7))
+        none = apply_smoothing("none", previous, target)
+
+        self.assertEqual(fixed, Point(10, 0))
+        self.assertEqual(none, target)
 
     def test_tasks_model_path_resolves_inside_project_root(self):
         path = resolve_model_path("models/hand_landmarker.task", Path("/tmp/project"))
