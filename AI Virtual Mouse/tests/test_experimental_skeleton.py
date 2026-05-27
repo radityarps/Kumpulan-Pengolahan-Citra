@@ -1,11 +1,24 @@
+import sys
+import unittest
 from contextlib import redirect_stdout
+from importlib import import_module
 from io import StringIO
 from pathlib import Path
-import unittest
 
-from ai_virtual_mouse_experimental.app import StartupError, build_runtime_plan
-from ai_virtual_mouse_experimental.cli import main
-from ai_virtual_mouse_experimental.config import ConfigError, load_config
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+
+app_module = import_module("ai_virtual_mouse_experimental.app")
+baseline_module = import_module("ai_virtual_mouse_experimental.baseline")
+cli_module = import_module("ai_virtual_mouse_experimental.cli")
+config_module = import_module("ai_virtual_mouse_experimental.config")
+
+StartupError = app_module.StartupError
+build_runtime_plan = app_module.build_runtime_plan
+build_baseline_metadata = baseline_module.build_baseline_metadata
+classify_baseline_gesture = baseline_module.classify_baseline_gesture
+main = cli_module.main
+ConfigError = config_module.ConfigError
+load_config = config_module.load_config
 
 
 CONFIG_PATH = Path("config/experimental.toml")
@@ -58,6 +71,43 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertEqual(exit_code, 0)
         self.assertIn("Available modes", output.getvalue())
         self.assertIn("Available conditions", output.getvalue())
+
+    def test_cli_exposes_selected_metadata(self):
+        output = StringIO()
+
+        with redirect_stdout(output):
+            exit_code = main(["--metadata", "--condition", "baseline"])
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn('"condition": "baseline"', output.getvalue())
+        self.assertIn('"gesture_profile": "tutorial_pinch"', output.getvalue())
+
+    def test_baseline_gesture_preserves_tutorial_movement(self):
+        result = classify_baseline_gesture([0, 1, 0, 0, 0])
+
+        self.assertEqual(result.action, "move")
+        self.assertEqual(result.reason, "index_only")
+
+    def test_baseline_gesture_preserves_tutorial_click(self):
+        result = classify_baseline_gesture([0, 1, 1, 0, 0], pinch_distance=30)
+
+        self.assertEqual(result.action, "click")
+
+    def test_baseline_gesture_ignores_no_hand_state(self):
+        result = classify_baseline_gesture([])
+
+        self.assertEqual(result.action, "idle")
+
+    def test_baseline_metadata_exposes_condition_for_reports(self):
+        config = load_config(CONFIG_PATH)
+        plan = build_runtime_plan(config, condition_name="baseline")
+
+        metadata = build_baseline_metadata(config, plan)
+
+        self.assertEqual(metadata.condition, "baseline")
+        self.assertEqual(metadata.backend, "mediapipe_solutions")
+        self.assertEqual(metadata.gesture_profile, "tutorial_pinch")
+        self.assertIn("no_hand_guard", metadata.compatibility_fixes)
 
 
 if __name__ == "__main__":

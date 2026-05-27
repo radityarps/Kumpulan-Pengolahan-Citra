@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib.util import find_spec
+from typing import Any
 
 from .config import ExperimentalConfig
 
@@ -15,6 +16,7 @@ class RuntimePlan:
     controls_real_mouse: bool
     requires_camera: bool
     output_root: str
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class StartupError(RuntimeError):
@@ -58,6 +60,15 @@ def build_runtime_plan(
         controls_real_mouse=controls_real_mouse,
         requires_camera=mode.requires_camera,
         output_root=config.output.root_dir,
+        metadata={
+            "condition": condition_key,
+            "backend": backend_name,
+            "gesture_profile": condition.gesture_profile,
+            "smoothing_strategy": condition.smoothing_strategy,
+            "debounce_enabled": condition.debounce_enabled,
+            "calibration_enabled": condition.calibration_enabled,
+            "benchmark_name": config.benchmark.name,
+        },
     )
 
 
@@ -78,5 +89,9 @@ def describe_plan(plan: RuntimePlan) -> str:
             f"- real OS mouse control: {real_mouse}",
             f"- camera: {camera}",
             f"- output root: {plan.output_root}",
+            f"- gesture profile: {plan.metadata.get('gesture_profile')}",
+            f"- smoothing strategy: {plan.metadata.get('smoothing_strategy')}",
+            f"- debounce enabled: {plan.metadata.get('debounce_enabled')}",
+            f"- calibration enabled: {plan.metadata.get('calibration_enabled')}",
         )
     )

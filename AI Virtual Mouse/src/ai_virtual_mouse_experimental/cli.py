@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+from importlib import import_module
 from pathlib import Path
 
 from .app import StartupError, build_runtime_plan, describe_plan
@@ -38,6 +40,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="List available modes and conditions, then exit.",
     )
+    parser.add_argument(
+        "--metadata",
+        action="store_true",
+        help="Print selected runtime metadata as JSON, then exit.",
+    )
     return parser
 
 
@@ -57,11 +64,24 @@ def main(argv: list[str] | None = None) -> int:
             condition_name=args.condition,
             allow_real_mouse=args.allow_real_mouse,
         )
+        if args.metadata:
+            print(json.dumps(plan.metadata, indent=2, sort_keys=True))
+            return 0
     except (ConfigError, StartupError) as exc:
         parser.exit(2, f"error: {exc}\n")
 
     print(describe_plan(plan))
-    print("Skeleton startup complete. Runtime loop is intentionally not implemented yet.")
+
+    if plan.mode == "demo" and plan.condition == "baseline":
+        baseline = import_module("ai_virtual_mouse_experimental.baseline")
+        metadata = baseline.build_baseline_metadata(config, plan)
+        print(f"Baseline metadata: {metadata}")
+        return baseline.run_frozen_video_baseline(config, plan)
+
+    print(
+        "Skeleton startup complete. Runtime loop is intentionally not implemented "
+        "for this mode yet."
+    )
     return 0
 
 
