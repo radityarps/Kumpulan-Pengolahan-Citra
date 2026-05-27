@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from importlib import import_module
 
 from .app import RuntimePlan
+from .benchmark_grid import (
+    create_point_click_benchmark,
+    register_click,
+    start_current_trial,
+    summarize_benchmark,
+)
 from .config import ExperimentalConfig
 
 
@@ -51,6 +58,7 @@ def benchmark_instruction_lines(state: BenchmarkShellState) -> list[str]:
         f"Backend: {state.backend}",
         "This benchmark uses a simulated cursor and does not move the OS mouse.",
         "Placeholder controls: arrow keys or WASD move the simulated cursor.",
+        "Press Space or left mouse button to click the current target.",
         "Safe quit: press Q or Escape, or close the window.",
     ]
 
@@ -84,6 +92,9 @@ def run_pygame_benchmark_shell(config: ExperimentalConfig, plan: RuntimePlan) ->
         ) from exc
 
     state = create_benchmark_shell_state(config, plan)
+    benchmark = start_current_trial(
+        create_point_click_benchmark(config.benchmark), time.perf_counter()
+    )
     pygame.init()
     screen = pygame.display.set_mode((state.width, state.height))
     pygame.display.set_caption("AI Virtual Mouse Benchmark Shell")
@@ -102,6 +113,12 @@ def run_pygame_benchmark_shell(config: ExperimentalConfig, plan: RuntimePlan) ->
                 event.type == pygame.KEYDOWN and event.key in (pygame.K_q, pygame.K_ESCAPE)
             ):
                 running = False
+            elif (
+                event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE
+            ) or (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1):
+                benchmark = register_click(
+                    benchmark, state.cursor.x, state.cursor.y, time.perf_counter()
+                )
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
@@ -122,9 +139,27 @@ def run_pygame_benchmark_shell(config: ExperimentalConfig, plan: RuntimePlan) ->
             screen.blit(rendered, (28, y))
             y += 34 if index == 0 else 26
 
-        pygame.draw.rect(screen, (88, 166, 255), (state.width - 160, state.height - 110, 90, 90), 3)
-        target_label = small_font.render("target placeholder", True, (136, 192, 255))
-        screen.blit(target_label, (state.width - 205, state.height - 140))
+        if benchmark.is_complete:
+            summary = summarize_benchmark(benchmark)
+            summary_lines = [
+                "Benchmark complete",
+                f"hits: {summary.hits}/{summary.total_trials}",
+                f"false clicks: {summary.false_clicks}",
+                f"mean time: {summary.mean_completion_time_s:.2f}s",
+            ]
+            for offset, line in enumerate(summary_lines):
+                rendered = font.render(line, True, (144, 238, 144))
+                screen.blit(rendered, (state.width // 2 - 120, state.height // 2 + offset * 32))
+        else:
+            target = benchmark.current_target
+            if target is not None:
+                pygame.draw.circle(screen, (88, 166, 255), (target.x, target.y), target.radius, 3)
+                target_label = small_font.render(
+                    f"target {target.index + 1}/{len(benchmark.targets)}",
+                    True,
+                    (136, 192, 255),
+                )
+                screen.blit(target_label, (target.x - 48, target.y - target.radius - 26))
         pygame.draw.circle(
             screen,
             (255, 92, 138),

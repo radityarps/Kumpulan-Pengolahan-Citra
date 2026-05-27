@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 app_module = import_module("ai_virtual_mouse_experimental.app")
 baseline_module = import_module("ai_virtual_mouse_experimental.baseline")
+benchmark_grid_module = import_module("ai_virtual_mouse_experimental.benchmark_grid")
 benchmark_shell_module = import_module("ai_virtual_mouse_experimental.benchmark_shell")
 cli_module = import_module("ai_virtual_mouse_experimental.cli")
 config_module = import_module("ai_virtual_mouse_experimental.config")
@@ -23,6 +24,11 @@ classify_baseline_gesture = baseline_module.classify_baseline_gesture
 benchmark_instruction_lines = benchmark_shell_module.benchmark_instruction_lines
 create_benchmark_shell_state = benchmark_shell_module.create_benchmark_shell_state
 move_simulated_cursor = benchmark_shell_module.move_simulated_cursor
+create_point_click_benchmark = benchmark_grid_module.create_point_click_benchmark
+generate_grid_targets = benchmark_grid_module.generate_grid_targets
+register_click = benchmark_grid_module.register_click
+start_current_trial = benchmark_grid_module.start_current_trial
+summarize_benchmark = benchmark_grid_module.summarize_benchmark
 main = cli_module.main
 ConfigError = config_module.ConfigError
 load_config = config_module.load_config
@@ -153,6 +159,40 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
         self.assertEqual(moved.cursor.x, moved.cursor.radius)
         self.assertEqual(moved.cursor.y, moved.cursor.radius)
+
+    def test_point_click_targets_are_deterministic(self):
+        config = load_config(CONFIG_PATH)
+
+        first = generate_grid_targets(config.benchmark)
+        second = generate_grid_targets(config.benchmark)
+
+        self.assertEqual(first, second)
+        self.assertEqual(len(first), config.benchmark.target_count)
+
+    def test_point_click_benchmark_records_hit_trial(self):
+        config = load_config(CONFIG_PATH)
+        state = start_current_trial(create_point_click_benchmark(config.benchmark), 10.0)
+        target = state.current_target
+        self.assertIsNotNone(target)
+
+        clicked = register_click(state, target.x, target.y, 12.5)
+
+        self.assertEqual(len(clicked.results), 1)
+        self.assertTrue(clicked.results[0].hit)
+        self.assertEqual(clicked.results[0].completion_time_s, 2.5)
+
+    def test_point_click_benchmark_counts_false_clicks(self):
+        config = load_config(CONFIG_PATH)
+        state = start_current_trial(create_point_click_benchmark(config.benchmark), 10.0)
+        target = state.current_target
+        self.assertIsNotNone(target)
+
+        missed = register_click(state, 0, 0, 11.0)
+        hit = register_click(missed, target.x, target.y, 12.0)
+        summary = summarize_benchmark(hit)
+
+        self.assertEqual(hit.results[0].false_clicks_before_hit, 1)
+        self.assertEqual(summary.false_clicks, 1)
 
     def test_tasks_model_path_resolves_inside_project_root(self):
         path = resolve_model_path("models/hand_landmarker.task", Path("/tmp/project"))
