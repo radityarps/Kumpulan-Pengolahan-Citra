@@ -14,6 +14,8 @@ Build a research-oriented AI Virtual Mouse application that compares a tutorial-
 
 The improved version will use MediaPipe Tasks API with an auto-downloaded HandLandmarker model, modular application architecture, adaptive cursor smoothing, calibration, click debouncing, drag support, scroll support, and pause behavior. The benchmark will use a simulated cursor inside a Pygame-controlled task environment rather than controlling the real OS mouse during evaluation.
 
+After the benchmark foundation, the next product milestone is a modern Real Mouse Runtime: a program that feels like the video version because webcam hand gestures control the real operating system mouse, but is built on the modular architecture. This runtime will prioritize the real mouse experience before full benchmark hand-input wiring. It will use MediaPipe Tasks as the primary backend, MediaPipe Solutions as a recorded fallback, the Simple Real Mouse Profile of move/click/pause, Default Tracking Bounds with Optional Calibration, Adaptive Smoothing Default, Stable Pinch Click, Pause Toggle Gesture, and Runtime Safety Controls.
+
 The main evaluation method will be a point-and-click grid benchmark that records task performance and technical metrics. After each benchmark session, the system will generate CSV logs, plots, and a Markdown report suitable for use in project documentation, academic reports, and presentations.
 
 The primary research comparison is final user experience:
@@ -70,6 +72,14 @@ The API backend should still be recorded in logs so that modernization from the 
 43. As a maintainer, I want dependencies documented and pinned where needed, so that experiments remain reproducible.
 44. As a reviewer, I want the benchmark methodology documented, so that I can judge whether the usability comparison is valid.
 45. As a reviewer, I want out-of-scope items clearly documented, so that the prototype does not overclaim beyond the measured evidence.
+46. As a user, I want a modern real mouse program that feels like the video version, so that I can control the operating system cursor with my hand.
+47. As a user, I want the Real Mouse Runtime to use movement, stable pinch click, and pause first, so that the initial version is usable and avoids risky drag/scroll false positives.
+48. As a user, I want open-palm hold to toggle pause, so that I can intentionally stop and resume cursor actions without flicker.
+49. As a user, I want the app to start with default tracking bounds, so that I can use it immediately before optional calibration.
+50. As a user, I want optional calibration, so that I can improve cursor mapping when the default bounds feel uncomfortable.
+51. As a user, I want adaptive smoothing by default, so that the cursor is stable for small motion and responsive for large motion.
+52. As a user, I want safety controls beyond window close, so that I can escape if real mouse control becomes unstable.
+53. As a developer, I want Tasks backend failures to fall back to Solutions with explicit metadata, so that the improved condition remains usable while reports stay honest.
 
 ## Implementation Decisions
 
@@ -81,7 +91,8 @@ The API backend should still be recorded in logs so that modernization from the 
 - The HandLandmarker model will be obtained through an auto-download setup step rather than manually placed by the user.
 - The benchmark will use a simulated cursor in a Pygame window, not the real OS cursor.
 - The app may still support real OS mouse control as a demo mode, but the benchmark path should remain simulated for safety and measurement accuracy.
-- The gesture set for the improved mode will initially include movement, left click, drag, scroll, and pause.
+- The gesture set for the first Real Mouse Runtime will use the Simple Real Mouse Profile: movement, stable pinch click, and pause only.
+- Drag and scroll remain part of the broader improved gesture engine, but are not enabled in the first real mouse program to reduce accidental actions.
 - The benchmark task will be a point-and-click grid with randomly selected targets.
 - The benchmark will output raw CSV logs, summary metrics, plots, and a Markdown report.
 - The system will support ablation modes: baseline, smoothing-only, debounce-only, calibration-only, and full improved mode.
@@ -95,6 +106,16 @@ The API backend should still be recorded in logs so that modernization from the 
 - Metrics should include at minimum completion time, hit/miss status, false click count, click count, cursor path length, FPS, and jitter estimate.
 - The Pygame benchmark window should provide clear instructions, target rendering, simulated cursor rendering, and safe quit controls.
 - The documentation should explain the difference between baseline and improved modes, the benchmark methodology, and how to interpret generated reports.
+- The Real Mouse Runtime is prioritized before wiring webcam hand input into the Benchmark Runtime.
+- The Real Mouse Runtime should use a shared hand-control pipeline internally where practical, but its first delivered behavior should be the real OS mouse program.
+- MediaPipe Tasks is the primary backend for the Real Mouse Runtime; MediaPipe Solutions is a fallback only when Tasks cannot initialize.
+- Backend fallback must be explicit in runtime output and metadata; it must never be silent.
+- A fallback run remains the Improved Condition, but metadata records the actual backend as a fallback.
+- Pause is implemented as an open-palm hold toggle, not a continuous open-palm hold state.
+- Left click is implemented as Stable Pinch Click: one click emitted after pinch is stable for configured debounce frames, then rearmed after release.
+- Cursor mapping starts with Default Tracking Bounds and can be improved with Optional Calibration.
+- Adaptive Smoothing Default is used in the Real Mouse Runtime and configured through TOML rather than live UI controls.
+- Runtime Safety Controls include keyboard quit, Pause Toggle Gesture, and corner failsafe.
 
 ## Testing Decisions
 
@@ -112,6 +133,8 @@ The API backend should still be recorded in logs so that modernization from the 
 - Pygame rendering should be manually tested initially, with automated tests reserved for benchmark state transitions and metric outputs.
 - The baseline mode should be manually verified against the tutorial behavior: index-only movement and index-middle pinch click.
 - The improved mode should be manually verified for movement, click, drag, scroll, pause, calibration, and benchmark logging.
+- The Real Mouse Runtime should be tested with pure unit coverage for backend fallback selection, pause toggle state, stable pinch debouncing, default/calibrated mapping selection, adaptive smoothing, and corner failsafe logic.
+- The Real Mouse Runtime should be manually smoke-tested with webcam input before recommending it for demo use.
 
 ## Out of Scope
 
@@ -121,6 +144,8 @@ The API backend should still be recorded in logs so that modernization from the 
 - Advanced statistical analysis is out of scope, but the generated CSV should support later statistical analysis.
 - Full accessibility validation with target users is out of scope unless a later research phase is defined.
 - Multi-hand gesture control is out of scope for the first improved version.
+- Drag and scroll in the first Real Mouse Runtime are out of scope; only movement, stable pinch click, and pause are included initially.
+- Requiring calibration before startup is out of scope; calibration remains optional.
 - Cross-platform OS mouse behavior beyond Windows-focused development is out of scope for the first pass.
 - Packaging as a distributable desktop application is out of scope for the first pass.
 
@@ -139,3 +164,6 @@ A strong implementation path is:
 5. Add ablation modes.
 6. Add CSV logging, metrics, plots, and Markdown report generation.
 7. Update documentation and tests.
+8. Build the Real Mouse Runtime with Tasks-primary/Solutions-fallback backend selection.
+9. Connect the Simple Real Mouse Profile to real OS cursor movement, Stable Pinch Click, Pause Toggle Gesture, Default Tracking Bounds, Optional Calibration hooks, Adaptive Smoothing Default, and Runtime Safety Controls.
+10. Later, connect the same hand-control behavior to the Benchmark Runtime so benchmark results measure the same behavior used by the real mouse program.
