@@ -1,37 +1,36 @@
-# Python bytecode and caches
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Build and packaging artifacts
-build/
-dist/
-*.egg-info/
-.eggs/
 
 # Virtual environments
 .venv/
 venv/
 env/
-ENV/
 
-# Test and tool caches
+# Tool caches
+.ruff_cache/
 .pytest_cache/
 .mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
 
-# Local agent/tooling caches
-.pi-lens/
-
-# IDE/editor settings
+# IDE/editor
 .vscode/
 .idea/
+*.swp
+*.swo
 
 # OS files
 .DS_Store
 Thumbs.db
 
-# Node.js
-node_modules/
+# Logs
+*.log
+
+# Local media captures
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.png
+*.jpg
+*.jpeg
