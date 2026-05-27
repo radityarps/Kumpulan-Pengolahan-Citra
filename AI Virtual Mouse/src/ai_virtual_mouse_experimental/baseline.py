@@ -40,7 +40,9 @@ class BaselineRunMetadata:
     )
 
 
-def build_baseline_metadata(config: ExperimentalConfig, plan: RuntimePlan) -> BaselineRunMetadata:
+def build_baseline_metadata(
+    config: ExperimentalConfig, plan: RuntimePlan
+) -> BaselineRunMetadata:
     condition = config.get_condition(plan.condition)
     return BaselineRunMetadata(
         condition=plan.condition,
@@ -85,7 +87,12 @@ class FrozenVideoHandDetector:
 
     tip_ids = [4, 8, 12, 16, 20]
 
-    def __init__(self, max_hands: int = 1, detection_confidence: float = 0.5, tracking_confidence: float = 0.5):
+    def __init__(
+        self,
+        max_hands: int = 1,
+        detection_confidence: float = 0.5,
+        tracking_confidence: float = 0.5,
+    ):
         self.cv2 = import_module("cv2")
         self.mp_hands = _import_mediapipe_hands()
         self.mp_draw = _import_mediapipe_drawing_utils()
@@ -138,7 +145,9 @@ class FrozenVideoHandDetector:
         ymin, ymax = min(y_list), max(y_list)
         bbox = (xmin, ymin, xmax, ymax)
         if draw:
-            self.cv2.rectangle(image, (xmin - 20, ymin - 20), (xmax + 20, ymax + 20), (0, 255, 0), 2)
+            self.cv2.rectangle(
+                image, (xmin - 20, ymin - 20), (xmax + 20, ymax + 20), (0, 255, 0), 2
+            )
         return self.lm_list, bbox
 
     def fingers_up(self) -> list[int]:
@@ -146,13 +155,25 @@ class FrozenVideoHandDetector:
             return [0, 0, 0, 0, 0]
 
         fingers: list[int] = []
-        fingers.append(1 if self.lm_list[self.tip_ids[0]][1] > self.lm_list[self.tip_ids[0] - 1][1] else 0)
+        fingers.append(
+            1
+            if self.lm_list[self.tip_ids[0]][1] > self.lm_list[self.tip_ids[0] - 1][1]
+            else 0
+        )
         for finger_id in range(1, 5):
             tip = self.tip_ids[finger_id]
             fingers.append(1 if self.lm_list[tip][2] < self.lm_list[tip - 2][2] else 0)
         return fingers
 
-    def find_distance(self, p1: int, p2: int, image, draw: bool = True, radius: int = 15, thickness: int = 3):
+    def find_distance(
+        self,
+        p1: int,
+        p2: int,
+        image,
+        draw: bool = True,
+        radius: int = 15,
+        thickness: int = 3,
+    ):
         x1, y1 = self.lm_list[p1][1:]
         x2, y2 = self.lm_list[p2][1:]
         cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
@@ -196,7 +217,10 @@ def run_frozen_video_baseline(config: ExperimentalConfig, plan: RuntimePlan) -> 
         cv2.rectangle(
             image,
             (frame_reduction, frame_reduction),
-            (config.backend.camera_width - frame_reduction, config.backend.camera_height - frame_reduction),
+            (
+                config.backend.camera_width - frame_reduction,
+                config.backend.camera_height - frame_reduction,
+            ),
             (255, 0, 255),
             2,
         )
@@ -204,11 +228,21 @@ def run_frozen_video_baseline(config: ExperimentalConfig, plan: RuntimePlan) -> 
         if lm_list:
             x1, y1 = lm_list[8][1:]
             fingers = detector.fingers_up()
-            gesture = classify_baseline_gesture(fingers, click_threshold_px=config.gesture.click_threshold_px)
+            gesture = classify_baseline_gesture(
+                fingers, click_threshold_px=config.gesture.click_threshold_px
+            )
 
             if gesture.action == "move":
-                x3 = np.interp(x1, (frame_reduction, config.backend.camera_width - frame_reduction), (0, w_screen))
-                y3 = np.interp(y1, (frame_reduction, config.backend.camera_height - frame_reduction), (0, h_screen))
+                x3 = np.interp(
+                    x1,
+                    (frame_reduction, config.backend.camera_width - frame_reduction),
+                    (0, w_screen),
+                )
+                y3 = np.interp(
+                    y1,
+                    (frame_reduction, config.backend.camera_height - frame_reduction),
+                    (0, h_screen),
+                )
                 current_x = previous_x + (x3 - previous_x) / smoothening
                 current_y = previous_y + (y3 - previous_y) / smoothening
                 autopy.mouse.move(w_screen - current_x, current_y)
@@ -223,13 +257,17 @@ def run_frozen_video_baseline(config: ExperimentalConfig, plan: RuntimePlan) -> 
                     click_threshold_px=config.gesture.click_threshold_px,
                 )
                 if gesture.action == "click":
-                    cv2.circle(image, (line_info[4], line_info[5]), 15, (0, 255, 0), cv2.FILLED)
+                    cv2.circle(
+                        image, (line_info[4], line_info[5]), 15, (0, 255, 0), cv2.FILLED
+                    )
                     autopy.mouse.click()
 
         current_time = time.time()
         fps = 0 if previous_time == 0 else 1 / (current_time - previous_time)
         previous_time = current_time
-        cv2.putText(image, str(int(fps)), (20, 50), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 0), 3)
+        cv2.putText(
+            image, str(int(fps)), (20, 50), cv2.FONT_HERSHEY_PLAIN, 3, (255, 0, 0), 3
+        )
         cv2.imshow("Frozen Video Baseline", image)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break

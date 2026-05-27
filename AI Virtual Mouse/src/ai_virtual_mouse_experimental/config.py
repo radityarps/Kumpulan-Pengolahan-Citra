@@ -89,7 +89,9 @@ class ExperimentalConfig:
             return self.modes[name]
         except KeyError as exc:
             options = ", ".join(sorted(self.modes))
-            raise ConfigError(f"Unknown mode '{name}'. Available modes: {options}") from exc
+            raise ConfigError(
+                f"Unknown mode '{name}'. Available modes: {options}"
+            ) from exc
 
     def get_condition(self, name: str) -> ConditionSettings:
         try:
@@ -115,9 +117,7 @@ def load_config(path: Path) -> ExperimentalConfig:
 
 def parse_config(raw: dict) -> ExperimentalConfig:
     try:
-        modes = {
-            name: ModeSettings(**value) for name, value in raw["modes"].items()
-        }
+        modes = {name: ModeSettings(**value) for name, value in raw["modes"].items()}
         conditions = {
             name: ConditionSettings(**value)
             for name, value in raw["conditions"].items()
@@ -132,7 +132,9 @@ def parse_config(raw: dict) -> ExperimentalConfig:
             output=OutputSettings(**raw["output"]),
         )
     except KeyError as exc:
-        raise ConfigError(f"Missing required configuration section: {exc.args[0]}") from exc
+        raise ConfigError(
+            f"Missing required configuration section: {exc.args[0]}"
+        ) from exc
     except TypeError as exc:
         raise ConfigError(f"Invalid configuration shape: {exc}") from exc
 

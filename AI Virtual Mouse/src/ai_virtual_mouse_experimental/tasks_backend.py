@@ -61,9 +61,14 @@ def download_hand_landmarker_model(
 
     model_path.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with urlopen(config.backend.model_url, timeout=60) as response, model_path.open("wb") as output:
+        with (
+            urlopen(config.backend.model_url, timeout=60) as response,
+            model_path.open("wb") as output,
+        ):
             shutil.copyfileobj(response, output)
-    except Exception as exc:  # pragma: no cover - network failures are environment-specific.
+    except (
+        Exception
+    ) as exc:  # pragma: no cover - network failures are environment-specific.
         raise BackendError(f"Failed to download HandLandmarker model: {exc}") from exc
 
     if not model_path.exists() or model_path.stat().st_size == 0:
@@ -90,7 +95,9 @@ def ensure_hand_landmarker_model(
     return download_hand_landmarker_model(config, project_root, overwrite=overwrite)
 
 
-def smoke_test_tasks_backend(config: ExperimentalConfig, project_root: Path | None = None) -> TasksBackendMetadata:
+def smoke_test_tasks_backend(
+    config: ExperimentalConfig, project_root: Path | None = None
+) -> TasksBackendMetadata:
     model_path = ensure_hand_landmarker_model(config, project_root)
 
     try:

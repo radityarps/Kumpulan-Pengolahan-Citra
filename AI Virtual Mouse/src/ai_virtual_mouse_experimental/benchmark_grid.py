@@ -79,7 +79,9 @@ def generate_grid_targets(settings: BenchmarkSettings) -> tuple[Target, ...]:
     )
 
 
-def create_point_click_benchmark(settings: BenchmarkSettings) -> PointClickBenchmarkState:
+def create_point_click_benchmark(
+    settings: BenchmarkSettings,
+) -> PointClickBenchmarkState:
     return PointClickBenchmarkState(
         targets=generate_grid_targets(settings),
         trial_start_time_s=0.0,
@@ -144,7 +146,9 @@ def summarize_benchmark(state: PointClickBenchmarkState) -> BenchmarkSummary:
     false_clicks = sum(result.false_clicks_before_hit for result in state.results)
     misses = len(state.targets) - hits
     mean_time = (
-        sum(result.completion_time_s for result in state.results) / hits if hits else 0.0
+        sum(result.completion_time_s for result in state.results) / hits
+        if hits
+        else 0.0
     )
     return BenchmarkSummary(
         total_trials=len(state.targets),

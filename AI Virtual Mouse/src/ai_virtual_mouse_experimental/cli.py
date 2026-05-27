@@ -104,7 +104,9 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if plan.mode == "benchmark":
-            benchmark_shell = import_module("ai_virtual_mouse_experimental.benchmark_shell")
+            benchmark_shell = import_module(
+                "ai_virtual_mouse_experimental.benchmark_shell"
+            )
             return benchmark_shell.run_pygame_benchmark_shell(config, plan)
 
         if plan.mode == "demo" and plan.condition == "baseline":

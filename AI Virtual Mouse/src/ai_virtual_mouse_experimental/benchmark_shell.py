@@ -11,6 +11,7 @@ from .benchmark_grid import (
     start_current_trial,
     summarize_benchmark,
 )
+from .benchmark_logging import format_output_paths, persist_benchmark_session
 from .config import ExperimentalConfig
 
 
@@ -67,8 +68,14 @@ def move_simulated_cursor(
     state: BenchmarkShellState, dx: float, dy: float
 ) -> BenchmarkShellState:
     cursor = SimulatedCursor(
-        x=min(max(state.cursor.x + dx, state.cursor.radius), state.width - state.cursor.radius),
-        y=min(max(state.cursor.y + dy, state.cursor.radius), state.height - state.cursor.radius),
+        x=min(
+            max(state.cursor.x + dx, state.cursor.radius),
+            state.width - state.cursor.radius,
+        ),
+        y=min(
+            max(state.cursor.y + dy, state.cursor.radius),
+            state.height - state.cursor.radius,
+        ),
         radius=state.cursor.radius,
     )
     return BenchmarkShellState(
@@ -110,12 +117,13 @@ def run_pygame_benchmark_shell(config: ExperimentalConfig, plan: RuntimePlan) ->
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT or (
-                event.type == pygame.KEYDOWN and event.key in (pygame.K_q, pygame.K_ESCAPE)
+                event.type == pygame.KEYDOWN
+                and event.key in (pygame.K_q, pygame.K_ESCAPE)
             ):
                 running = False
-            elif (
-                event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE
-            ) or (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1):
+            elif (event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE) or (
+                event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
+            ):
                 benchmark = register_click(
                     benchmark, state.cursor.x, state.cursor.y, time.perf_counter()
                 )
@@ -135,7 +143,9 @@ def run_pygame_benchmark_shell(config: ExperimentalConfig, plan: RuntimePlan) ->
         screen.fill((18, 22, 28))
         y = 28
         for index, line in enumerate(benchmark_instruction_lines(state)):
-            rendered = (font if index == 0 else small_font).render(line, True, (236, 240, 244))
+            rendered = (font if index == 0 else small_font).render(
+                line, True, (236, 240, 244)
+            )
             screen.blit(rendered, (28, y))
             y += 34 if index == 0 else 26
 
@@ -149,17 +159,23 @@ def run_pygame_benchmark_shell(config: ExperimentalConfig, plan: RuntimePlan) ->
             ]
             for offset, line in enumerate(summary_lines):
                 rendered = font.render(line, True, (144, 238, 144))
-                screen.blit(rendered, (state.width // 2 - 120, state.height // 2 + offset * 32))
+                screen.blit(
+                    rendered, (state.width // 2 - 120, state.height // 2 + offset * 32)
+                )
         else:
             target = benchmark.current_target
             if target is not None:
-                pygame.draw.circle(screen, (88, 166, 255), (target.x, target.y), target.radius, 3)
+                pygame.draw.circle(
+                    screen, (88, 166, 255), (target.x, target.y), target.radius, 3
+                )
                 target_label = small_font.render(
                     f"target {target.index + 1}/{len(benchmark.targets)}",
                     True,
                     (136, 192, 255),
                 )
-                screen.blit(target_label, (target.x - 48, target.y - target.radius - 26))
+                screen.blit(
+                    target_label, (target.x - 48, target.y - target.radius - 26)
+                )
         pygame.draw.circle(
             screen,
             (255, 92, 138),
@@ -170,5 +186,7 @@ def run_pygame_benchmark_shell(config: ExperimentalConfig, plan: RuntimePlan) ->
         screen.blit(cursor_label, (int(state.cursor.x) + 14, int(state.cursor.y) - 8))
         pygame.display.flip()
 
+    paths = persist_benchmark_session(benchmark, config, plan)
     pygame.quit()
+    print(format_output_paths(paths))
     return 0

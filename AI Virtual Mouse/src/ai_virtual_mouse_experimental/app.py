@@ -73,7 +73,9 @@ def build_runtime_plan(
 
 
 def missing_dependencies(module_names: tuple[str, ...]) -> list[str]:
-    return [module_name for module_name in module_names if find_spec(module_name) is None]
+    return [
+        module_name for module_name in module_names if find_spec(module_name) is None
+    ]
 
 
 def describe_plan(plan: RuntimePlan) -> str:

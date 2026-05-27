@@ -1,3 +1,5 @@
+import csv
+import json
 import sys
 import tempfile
 import unittest
@@ -12,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 app_module = import_module("ai_virtual_mouse_experimental.app")
 baseline_module = import_module("ai_virtual_mouse_experimental.baseline")
 benchmark_grid_module = import_module("ai_virtual_mouse_experimental.benchmark_grid")
+benchmark_logging_module = import_module("ai_virtual_mouse_experimental.benchmark_logging")
 benchmark_shell_module = import_module("ai_virtual_mouse_experimental.benchmark_shell")
 cli_module = import_module("ai_virtual_mouse_experimental.cli")
 config_module = import_module("ai_virtual_mouse_experimental.config")
@@ -29,6 +32,8 @@ generate_grid_targets = benchmark_grid_module.generate_grid_targets
 register_click = benchmark_grid_module.register_click
 start_current_trial = benchmark_grid_module.start_current_trial
 summarize_benchmark = benchmark_grid_module.summarize_benchmark
+format_output_paths = benchmark_logging_module.format_output_paths
+persist_benchmark_session = benchmark_logging_module.persist_benchmark_session
 main = cli_module.main
 ConfigError = config_module.ConfigError
 load_config = config_module.load_config
@@ -130,7 +135,9 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
     def test_benchmark_shell_state_uses_simulated_cursor_safely(self):
         config = load_config(CONFIG_PATH)
-        plan = build_runtime_plan(config, mode_name="benchmark", condition_name="baseline")
+        plan = build_runtime_plan(
+            config, mode_name="benchmark", condition_name="baseline"
+        )
 
         state = create_benchmark_shell_state(config, plan)
 
@@ -171,7 +178,9 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
     def test_point_click_benchmark_records_hit_trial(self):
         config = load_config(CONFIG_PATH)
-        state = start_current_trial(create_point_click_benchmark(config.benchmark), 10.0)
+        state = start_current_trial(
+            create_point_click_benchmark(config.benchmark), 10.0
+        )
         target = state.current_target
         self.assertIsNotNone(target)
 
@@ -183,7 +192,9 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
     def test_point_click_benchmark_counts_false_clicks(self):
         config = load_config(CONFIG_PATH)
-        state = start_current_trial(create_point_click_benchmark(config.benchmark), 10.0)
+        state = start_current_trial(
+            create_point_click_benchmark(config.benchmark), 10.0
+        )
         target = state.current_target
         self.assertIsNotNone(target)
 
@@ -193,6 +204,52 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
         self.assertEqual(hit.results[0].false_clicks_before_hit, 1)
         self.assertEqual(summary.false_clicks, 1)
+
+    def test_benchmark_logging_creates_session_metadata_and_csv(self):
+        config = load_config(CONFIG_PATH)
+        plan = build_runtime_plan(config, mode_name="benchmark", condition_name="baseline")
+        state = start_current_trial(create_point_click_benchmark(config.benchmark), 10.0)
+        target = state.current_target
+        self.assertIsNotNone(target)
+        state = register_click(state, target.x, target.y, 12.0)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            paths = persist_benchmark_session(state, config, plan, output_root=Path(tmpdir))
+            metadata = json.loads(paths.metadata_path.read_text(encoding="utf-8"))
+            with paths.trials_csv_path.open(newline="", encoding="utf-8") as csv_file:
+                rows = list(csv.DictReader(csv_file))
+
+        self.assertTrue(paths.session_dir.name)
+        self.assertEqual(metadata["condition"], "baseline")
+        self.assertEqual(metadata["backend"], "mediapipe_solutions")
+        self.assertEqual(rows[0]["condition"], "baseline")
+        self.assertEqual(rows[0]["mode"], "benchmark")
+        self.assertEqual(rows[0]["hit"], "True")
+
+    def test_benchmark_logging_works_for_improved_placeholder(self):
+        config = load_config(CONFIG_PATH)
+        plan = build_runtime_plan(config, mode_name="benchmark", condition_name="improved")
+        state = create_point_click_benchmark(config.benchmark)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            paths = persist_benchmark_session(state, config, plan, output_root=Path(tmpdir))
+            metadata = json.loads(paths.metadata_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(metadata["condition"], "improved")
+        self.assertEqual(metadata["backend"], "mediapipe_tasks")
+
+    def test_benchmark_output_paths_are_printable(self):
+        config = load_config(CONFIG_PATH)
+        plan = build_runtime_plan(config, mode_name="benchmark")
+        state = create_point_click_benchmark(config.benchmark)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            paths = persist_benchmark_session(state, config, plan, output_root=Path(tmpdir))
+
+        formatted = format_output_paths(paths)
+
+        self.assertIn("metadata", formatted)
+        self.assertIn("trials CSV", formatted)
 
     def test_tasks_model_path_resolves_inside_project_root(self):
         path = resolve_model_path("models/hand_landmarker.task", Path("/tmp/project"))
@@ -233,8 +290,9 @@ class ExperimentalSkeletonTests(unittest.TestCase):
     def test_tasks_model_missing_error_explains_download_command(self):
         config = load_config(CONFIG_PATH)
 
-        with tempfile.TemporaryDirectory() as tmpdir, self.assertRaisesRegex(
-            BackendError, "--download-model"
+        with (
+            tempfile.TemporaryDirectory() as tmpdir,
+            self.assertRaisesRegex(BackendError, "--download-model"),
         ):
             ensure_hand_landmarker_model(config, Path(tmpdir))
 
