@@ -754,10 +754,14 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         state = SafetyState(corner_threshold_frames=1)
 
         self.assertTrue(
-            check_safety(state, cursor_x=1919, cursor_y=500, screen_width=1920).quit_requested
+            check_safety(
+                state, cursor_x=1919, cursor_y=500, screen_width=1920
+            ).quit_requested
         )
         self.assertTrue(
-            check_safety(state, cursor_x=500, cursor_y=1079, screen_height=1080).quit_requested
+            check_safety(
+                state, cursor_x=500, cursor_y=1079, screen_height=1080
+            ).quit_requested
         )
         self.assertFalse(
             check_safety(

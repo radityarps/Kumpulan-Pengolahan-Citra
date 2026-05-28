@@ -9,6 +9,7 @@ import numpy as np
 
 from .config import ExperimentalConfig
 from .cursor_mapping import Point
+from .tasks_backend import resolve_model_path
 
 
 @dataclass(frozen=True)
@@ -47,10 +48,20 @@ class HandTracker:
                 return
             except Exception as exc:
                 self._fallback_reason = str(exc)
-                print(
-                    f"[WARN] Tasks backend failed ({exc}). "
-                    "Falling back to MediaPipe Solutions."
-                )
+                print(f"[WARN] Tasks backend failed ({exc}).")
+                try:
+                    self._setup_solutions_backend()
+                except Exception as fallback_exc:
+                    raise RuntimeError(
+                        "MediaPipe Tasks backend could not start and MediaPipe "
+                        "Solutions fallback is unavailable in this environment. "
+                        "Run `PYTHONPATH=src python -m ai_virtual_mouse_experimental "
+                        "--download-model`, then retry improved demo. "
+                        f"Tasks error: {exc}. Fallback error: {fallback_exc}"
+                    ) from fallback_exc
+                print("[WARN] Falling back to MediaPipe Solutions.")
+                self._backend_used = "mediapipe_solutions"
+                return
         self._setup_solutions_backend()
         self._backend_used = "mediapipe_solutions"
 
@@ -58,9 +69,15 @@ class HandTracker:
         mp = import_module("mediapipe")
         vision = mp.tasks.vision
         base_options = mp.tasks.BaseOptions
-        model_path = self.config.backend.model_path
+        model_path = resolve_model_path(self.config.backend.model_path)
+        if not model_path.exists():
+            raise RuntimeError(
+                f"HandLandmarker model not found: {model_path}. "
+                "Run `PYTHONPATH=src python -m ai_virtual_mouse_experimental "
+                "--download-model` before improved demo."
+            )
         opts = vision.HandLandmarkerOptions(
-            base_options=base_options(model_asset_path=model_path),
+            base_options=base_options(model_asset_path=str(model_path)),
             num_hands=1,
             min_hand_detection_confidence=0.5,
             min_hand_presence_confidence=0.5,

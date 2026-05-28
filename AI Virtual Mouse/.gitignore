@@ -26,6 +26,9 @@ Thumbs.db
 # Logs
 *.log
 
+# Downloaded runtime assets
+models/
+
 # Local media captures
 *.mp4
 *.avi
