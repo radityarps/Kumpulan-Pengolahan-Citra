@@ -89,6 +89,58 @@ Pure logic has automated tests for target generation, benchmark trial state, CSV
 
 The **Real Mouse Runtime** controls the actual OS cursor and is used for the live demo. The **Benchmark Runtime** uses a simulated cursor inside Pygame and is used for controlled measurement. They share the same hand-control pipeline where practical, but the benchmark does not move the OS mouse for safety and measurement accuracy.
 
+## Hand-Driven Benchmark Smoke Test Checklist
+
+Run this checklist before collecting research data with hand input.
+
+### Baseline Hand Benchmark
+
+```bash
+source .venv-improved/Scripts/activate
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --download-model
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark --condition baseline --hand-input
+```
+
+1. Camera window or Pygame window opens.
+2. Raise index finger only; simulated cursor moves.
+3. Raise index + middle, pinch fingertips; target registers click.
+4. Hit a target; trial advances.
+5. Miss a target; false click counter increments.
+6. Press `q` or Escape; benchmark exits cleanly.
+7. Verify OS cursor did NOT move during the session.
+8. Check `outputs/sessions/` for new session directory.
+9. Verify `metadata.json` contains `"hand_input"` section with `"gesture_profile": "baseline"`.
+10. Verify `trials.csv` exists with trial rows.
+
+### Improved Hand Benchmark
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark --condition improved --hand-input
+```
+
+1. Camera window or Pygame window opens.
+2. Raise index finger only; simulated cursor moves with adaptive smoothing.
+3. Raise index + middle, stable pinch; one click fires after debounce.
+4. Hold pinch; no repeated clicks.
+5. Release and re-pinch; second click fires.
+6. Hold open palm; pause toggles (cursor stops moving).
+7. Hold open palm again; resume.
+8. Hit a target; trial advances.
+9. Press `q` or Escape; benchmark exits cleanly.
+10. Verify OS cursor did NOT move during the session.
+11. Check `metadata.json` contains `"gesture_profile": "simple"` and `"debounce_enabled": true`.
+12. Check `metadata.json` contains `"technical_metrics"` with path length, FPS, jitter.
+
+### Comparison Report
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --compare-sessions outputs/sessions/<baseline-session> outputs/sessions/<improved-session>
+```
+
+1. Comparison report generates without error.
+2. Report mentions both conditions.
+3. Report includes no-overclaiming language.
+
 ## Interpretation Limits
 
 The benchmark measures controlled point-and-click usability. It can support claims about this benchmark task, such as completion time, hit rate, false clicks, and target-center click distance. It should not be used alone to claim that the virtual mouse is superior to a physical mouse or universally better for all desktop tasks.
