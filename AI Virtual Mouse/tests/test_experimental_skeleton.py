@@ -696,7 +696,7 @@ class ExperimentalSkeletonTests(unittest.TestCase):
     # Real Mouse Runtime tests
 
     def test_pause_toggle_activates_after_hold_threshold(self):
-        from ai_virtual_mouse_experimental.real_mouse_runtime import (
+        from ai_virtual_mouse_experimental.hand_control_pipeline import (
             PauseToggleState,
             update_pause_toggle,
         )
@@ -715,7 +715,7 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertTrue(result.state.paused)
 
     def test_pause_toggle_resets_after_release(self):
-        from ai_virtual_mouse_experimental.real_mouse_runtime import (
+        from ai_virtual_mouse_experimental.hand_control_pipeline import (
             PauseToggleState,
             update_pause_toggle,
         )
@@ -729,7 +729,7 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertTrue(result.state.paused)
 
     def test_safety_corner_failsafe_triggers_after_threshold(self):
-        from ai_virtual_mouse_experimental.real_mouse_runtime import (
+        from ai_virtual_mouse_experimental.hand_control_pipeline import (
             SafetyState,
             check_safety,
         )
@@ -746,7 +746,7 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertTrue(result.quit_requested)
 
     def test_safety_corner_failsafe_checks_all_screen_edges(self):
-        from ai_virtual_mouse_experimental.real_mouse_runtime import (
+        from ai_virtual_mouse_experimental.hand_control_pipeline import (
             SafetyState,
             check_safety,
         )
@@ -823,6 +823,46 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
         self.assertEqual(result.backend_used, "mediapipe_solutions")
         self.assertEqual(result.fallback_reason, "model not found")
+
+    def test_hand_control_pipeline_exposes_shared_interface(self):
+        from ai_virtual_mouse_experimental.hand_control_pipeline import (
+            HandControlFrame,
+            hand_input_from_tracking,
+        )
+        from ai_virtual_mouse_experimental.gesture_engine import GestureEngineConfig
+        from ai_virtual_mouse_experimental.hand_tracker import HandTrackingResult
+        from ai_virtual_mouse_experimental.cursor_mapping import Point
+
+        # Verify hand_input_from_tracking works
+        result = HandTrackingResult(
+            landmarks=[Point(0, 0)] * 21,
+            fingers_up=[0, 1, 0, 0, 0],
+            pinch_distance_px=50.0,
+            index_middle_vertical_delta_px=0.0,
+            success=True,
+            backend_used="mediapipe_tasks",
+        )
+        hand = hand_input_from_tracking(result, GestureEngineConfig())
+        self.assertTrue(hand.index)
+        self.assertFalse(hand.middle)
+
+        # Verify HandControlFrame dataclass
+        frame = HandControlFrame(
+            cursor_target=Point(100, 200),
+            click_fired=True,
+            paused=False,
+            gesture_name="click",
+            feedback_label="Click",
+            feedback_color=(76, 175, 80),
+            backend_used="mediapipe_tasks",
+            fallback_reason=None,
+            fps=30.0,
+            safety_triggered=False,
+            hand_detected=True,
+        )
+        self.assertEqual(frame.cursor_target, Point(100, 200))
+        self.assertTrue(frame.click_fired)
+        self.assertEqual(frame.gesture_name, "click")
 
 
 if __name__ == "__main__":
