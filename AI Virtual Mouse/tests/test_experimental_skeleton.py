@@ -864,6 +864,17 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertTrue(frame.click_fired)
         self.assertEqual(frame.gesture_name, "click")
 
+    def test_benchmark_shell_accepts_hand_input_flag(self):
+        """Verify benchmark shell function signature accepts hand_input parameter."""
+        from ai_virtual_mouse_experimental.benchmark_shell import (
+            run_pygame_benchmark_shell,
+        )
+        import inspect
+
+        sig = inspect.signature(run_pygame_benchmark_shell)
+        self.assertIn("hand_input", sig.parameters)
+        self.assertEqual(sig.parameters["hand_input"].default, False)
+
 
 if __name__ == "__main__":
     unittest.main()

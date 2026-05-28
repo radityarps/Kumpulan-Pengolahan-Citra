@@ -242,9 +242,7 @@ class HandControlPipeline:
             feedback = feedback_style(gesture)
 
             # Pause toggle
-            pause_res = update_pause_toggle(
-                self._pause_toggle, gesture.name == "pause"
-            )
+            pause_res = update_pause_toggle(self._pause_toggle, gesture.name == "pause")
             self._pause_toggle = pause_res.state
 
             if not self._pause_toggle.paused:

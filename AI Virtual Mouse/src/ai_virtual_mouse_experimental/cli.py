@@ -69,6 +69,11 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="+",
         help="Generate a comparison report from multiple benchmark session directories.",
     )
+    parser.add_argument(
+        "--hand-input",
+        action="store_true",
+        help="Use webcam hand gestures to drive the benchmark simulated cursor.",
+    )
     return parser
 
 
@@ -133,7 +138,9 @@ def main(argv: list[str] | None = None) -> int:
             benchmark_shell = import_module(
                 "ai_virtual_mouse_experimental.benchmark_shell"
             )
-            return benchmark_shell.run_pygame_benchmark_shell(config, plan)
+            return benchmark_shell.run_pygame_benchmark_shell(
+                config, plan, hand_input=args.hand_input
+            )
 
         if plan.mode == "demo" and plan.condition == "baseline":
             baseline = import_module("ai_virtual_mouse_experimental.baseline")

@@ -13,6 +13,7 @@ from .benchmark_grid import (
 )
 from .benchmark_logging import format_output_paths, persist_benchmark_session
 from .config import ExperimentalConfig
+from .hand_control_pipeline import HandControlPipeline
 
 
 class BenchmarkShellError(RuntimeError):
@@ -89,7 +90,9 @@ def move_simulated_cursor(
     )
 
 
-def run_pygame_benchmark_shell(config: ExperimentalConfig, plan: RuntimePlan) -> int:
+def run_pygame_benchmark_shell(
+    config: ExperimentalConfig, plan: RuntimePlan, hand_input: bool = False
+) -> int:
     try:
         pygame = import_module("pygame")
     except ModuleNotFoundError as exc:
@@ -108,6 +111,27 @@ def run_pygame_benchmark_shell(config: ExperimentalConfig, plan: RuntimePlan) ->
     font = pygame.font.SysFont("arial", 22)
     small_font = pygame.font.SysFont("arial", 18)
     clock = pygame.time.Clock()
+
+    # Hand input setup
+    pipeline = None
+    cap = None
+    cv2 = None
+    if hand_input:
+        cv2 = import_module("cv2")
+        use_simple = plan.condition != "baseline"
+        prefer_tasks = plan.condition != "baseline"
+        pipeline = HandControlPipeline(
+            config=config,
+            condition_name=plan.condition,
+            output_width=state.width,
+            output_height=state.height,
+            prefer_tasks=prefer_tasks,
+            use_simple_profile=use_simple,
+        )
+        cap = cv2.VideoCapture(config.backend.camera_index)
+        cap.set(3, config.backend.camera_width)
+        cap.set(4, config.backend.camera_height)
+        print("Hand input enabled for benchmark. Camera active.")
 
     running = True
     while running:
@@ -128,6 +152,42 @@ def run_pygame_benchmark_shell(config: ExperimentalConfig, plan: RuntimePlan) ->
                     benchmark, state.cursor.x, state.cursor.y, time.perf_counter()
                 )
 
+        # Hand input processing
+        hand_frame = None
+        if pipeline is not None and cap is not None and cv2 is not None:
+            success, camera_image = cap.read()
+            if success:
+                hand_frame = pipeline.process_frame(camera_image)
+                if not hand_frame.paused and hand_frame.cursor_target is not None:
+                    # Set simulated cursor to pipeline target directly
+                    new_x = min(
+                        max(hand_frame.cursor_target.x, state.cursor.radius),
+                        state.width - state.cursor.radius,
+                    )
+                    new_y = min(
+                        max(hand_frame.cursor_target.y, state.cursor.radius),
+                        state.height - state.cursor.radius,
+                    )
+                    state = BenchmarkShellState(
+                        width=state.width,
+                        height=state.height,
+                        condition=state.condition,
+                        backend=state.backend,
+                        cursor=SimulatedCursor(
+                            x=new_x, y=new_y, radius=state.cursor.radius
+                        ),
+                        safe_quit_keys=state.safe_quit_keys,
+                        controls_real_mouse=state.controls_real_mouse,
+                    )
+                if hand_frame.click_fired:
+                    benchmark = register_click(
+                        benchmark,
+                        state.cursor.x,
+                        state.cursor.y,
+                        time.perf_counter(),
+                    )
+
+        # Keyboard fallback controls
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT] or keys[pygame.K_a]:
             dx -= speed
@@ -184,8 +244,24 @@ def run_pygame_benchmark_shell(config: ExperimentalConfig, plan: RuntimePlan) ->
         )
         cursor_label = small_font.render("simulated cursor", True, (255, 166, 190))
         screen.blit(cursor_label, (int(state.cursor.x) + 14, int(state.cursor.y) - 8))
+
+        # Hand input overlay
+        if hand_frame is not None:
+            hand_overlay = [
+                f"Hand: {hand_frame.gesture_name}",
+                f"Paused: {hand_frame.paused}",
+                f"Backend: {hand_frame.backend_used}",
+            ]
+            for i, line in enumerate(hand_overlay):
+                rendered = small_font.render(line, True, (180, 220, 255))
+                screen.blit(rendered, (state.width - 220, 10 + i * 22))
+
         pygame.display.flip()
 
+    if cap is not None:
+        cap.release()
+    if pipeline is not None:
+        pipeline.close()
     paths = persist_benchmark_session(benchmark, config, plan)
     pygame.quit()
     print(format_output_paths(paths))
