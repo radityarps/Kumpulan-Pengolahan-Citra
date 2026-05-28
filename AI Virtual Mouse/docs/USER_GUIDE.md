@@ -164,6 +164,17 @@ PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark --condit
 
 Benchmark mode uses a simulated cursor inside Pygame and does not move the OS mouse. Use arrow keys/WASD to move the placeholder cursor and Space/left click to click targets.
 
+### Hand-Driven Benchmark
+
+To use webcam hand gestures instead of keyboard controls:
+
+```bash
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark --condition baseline --hand-input
+PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark --condition improved --hand-input
+```
+
+The simulated cursor follows your hand gestures. The OS mouse is never moved during benchmark evaluation. Keyboard controls remain available as fallback.
+
 ## Benchmark Outputs
 
 Each benchmark session creates:
