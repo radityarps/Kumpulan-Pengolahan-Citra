@@ -14,7 +14,9 @@ numpy>=2.0.0
 # Pygame for benchmark runtime
 pygame>=2.5.0
 
-# OS mouse control (if available on platform)
+# OS mouse control for modern Python
+pyautogui>=0.9.54
+
+# Legacy OS mouse control fallback when available
 # autopy may not install on all platforms with latest Python
-# If autopy fails, the real mouse runtime will report the missing dependency
 autopy; platform_system=="Windows" and python_version<"3.13"

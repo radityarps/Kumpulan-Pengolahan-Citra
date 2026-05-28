@@ -63,6 +63,9 @@ GestureInput = gesture_engine_module.GestureInput
 ClickDebounceConfig = gesture_engine_module.ClickDebounceConfig
 ClickDebounceState = gesture_engine_module.ClickDebounceState
 classify_improved_gesture = gesture_engine_module.classify_improved_gesture
+classify_simple_real_mouse_gesture = (
+    gesture_engine_module.classify_simple_real_mouse_gesture
+)
 config_from_settings = gesture_engine_module.config_from_settings
 debounce_config_from_settings = gesture_engine_module.debounce_config_from_settings
 feedback_style = gesture_engine_module.feedback_style
@@ -399,6 +402,41 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertEqual(style["label"], "Paused")
         self.assertIn("color", style)
 
+    def test_simple_real_mouse_profile_supports_only_move_click_pause(self):
+        move = classify_simple_real_mouse_gesture(GestureInput(index=True))
+        click = classify_simple_real_mouse_gesture(
+            GestureInput(index=True, middle=True, pinch_distance_px=20)
+        )
+        pause = classify_simple_real_mouse_gesture(
+            GestureInput(index=True, middle=True, ring=True, pinky=True)
+        )
+        scroll_like = classify_simple_real_mouse_gesture(
+            GestureInput(
+                index=True,
+                middle=True,
+                index_middle_vertical_delta_px=30,
+            )
+        )
+        drag_like = classify_simple_real_mouse_gesture(
+            GestureInput(
+                index=True,
+                middle=True,
+                pinch_distance_px=20,
+                pinch_duration_s=1.0,
+            ),
+            GestureEngineConfig(drag_hold_seconds=0.5),
+        )
+        not_index_only = classify_simple_real_mouse_gesture(
+            GestureInput(index=True, ring=True)
+        )
+
+        self.assertEqual(move.name, "move")
+        self.assertEqual(click.name, "click")
+        self.assertEqual(pause.name, "pause")
+        self.assertEqual(scroll_like.name, "idle")
+        self.assertEqual(drag_like.name, "click")
+        self.assertEqual(not_index_only.name, "idle")
+
     def test_gesture_engine_config_uses_project_settings(self):
         config = load_config(CONFIG_PATH)
 
@@ -706,6 +744,40 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
         result = check_safety(result, cursor_x=0, cursor_y=0)
         self.assertTrue(result.quit_requested)
+
+    def test_safety_corner_failsafe_checks_all_screen_edges(self):
+        from ai_virtual_mouse_experimental.real_mouse_runtime import (
+            SafetyState,
+            check_safety,
+        )
+
+        state = SafetyState(corner_threshold_frames=1)
+
+        self.assertTrue(
+            check_safety(state, cursor_x=1919, cursor_y=500, screen_width=1920).quit_requested
+        )
+        self.assertTrue(
+            check_safety(state, cursor_x=500, cursor_y=1079, screen_height=1080).quit_requested
+        )
+        self.assertFalse(
+            check_safety(
+                state,
+                cursor_x=960,
+                cursor_y=540,
+                screen_width=1920,
+                screen_height=1080,
+            ).quit_requested
+        )
+
+    def test_real_mouse_uses_index_middle_pinch_distance(self):
+        from ai_virtual_mouse_experimental.hand_tracker import _index_middle_distance
+
+        points = [Point(0, 0) for _ in range(21)]
+        points[4] = Point(999, 999)
+        points[8] = Point(10, 10)
+        points[12] = Point(13, 14)
+
+        self.assertEqual(_index_middle_distance(points), 5.0)
 
     def test_real_mouse_metadata_includes_safety_controls(self):
         from ai_virtual_mouse_experimental.real_mouse_runtime import (

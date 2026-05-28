@@ -18,7 +18,7 @@ from .gesture_engine import (
     ClickDebounceState,
     GestureEngineConfig,
     GestureInput,
-    classify_improved_gesture,
+    classify_simple_real_mouse_gesture,
     config_from_settings,
     debounce_config_from_settings,
     feedback_style,
@@ -58,6 +58,15 @@ class RuntimeSnapshot:
     fps: float = 0.0
     cursor_x: float = 0.0
     cursor_y: float = 0.0
+
+
+@dataclass(frozen=True)
+class MouseController:
+    width: int
+    height: int
+    backend: str
+    move: Any
+    click: Any
 
 
 def update_pause_toggle(
@@ -103,8 +112,19 @@ def update_pause_toggle(
     )
 
 
-def check_safety(state: SafetyState, cursor_x: float, cursor_y: float) -> SafetyState:
-    if cursor_x <= 4 or cursor_y <= 4:
+def check_safety(
+    state: SafetyState,
+    cursor_x: float,
+    cursor_y: float,
+    screen_width: float | None = None,
+    screen_height: float | None = None,
+    margin_px: float = 4,
+) -> SafetyState:
+    near_left = cursor_x <= margin_px
+    near_top = cursor_y <= margin_px
+    near_right = screen_width is not None and cursor_x >= screen_width - margin_px
+    near_bottom = screen_height is not None and cursor_y >= screen_height - margin_px
+    if near_left or near_top or near_right or near_bottom:
         next_corner = state.corner_frames + 1
         if next_corner >= state.corner_threshold_frames:
             return SafetyState(
@@ -147,6 +167,29 @@ def build_real_mouse_metadata(
     }
 
 
+def _create_mouse_controller() -> MouseController:
+    try:
+        autopy = import_module("autopy")
+        width, height = autopy.screen.size()
+        return MouseController(
+            width=int(width),
+            height=int(height),
+            backend="autopy",
+            move=autopy.mouse.move,
+            click=autopy.mouse.click,
+        )
+    except (ImportError, ModuleNotFoundError):
+        pyautogui = import_module("pyautogui")
+        width, height = pyautogui.size()
+        return MouseController(
+            width=int(width),
+            height=int(height),
+            backend="pyautogui",
+            move=pyautogui.moveTo,
+            click=pyautogui.click,
+        )
+
+
 def _hand_input_from_tracking(
     result: HandTrackingResult, config: GestureEngineConfig
 ) -> GestureInput:
@@ -167,10 +210,11 @@ def _hand_input_from_tracking(
 
 def run_real_mouse_runtime(config: ExperimentalConfig, plan: RuntimePlan) -> int:
     cv2 = import_module("cv2")
-    autopy = import_module("autopy")
+    mouse = _create_mouse_controller()
 
     metadata = build_real_mouse_metadata(config, plan)
     print(f"Real Mouse Runtime metadata: {metadata}")
+    print(f"Mouse controller backend: {mouse.backend}")
     print("Press 'q' to quit. Hold open palm to toggle pause.")
 
     tracker = HandTracker(config, prefer_tasks=True)
@@ -178,7 +222,7 @@ def run_real_mouse_runtime(config: ExperimentalConfig, plan: RuntimePlan) -> int
     cap.set(3, config.backend.camera_width)
     cap.set(4, config.backend.camera_height)
 
-    w_screen, h_screen = autopy.screen.size()
+    w_screen, h_screen = mouse.width, mouse.height
     fallback_bounds = default_camera_bounds(
         config.backend.camera_width, config.backend.camera_height
     )
@@ -192,7 +236,8 @@ def run_real_mouse_runtime(config: ExperimentalConfig, plan: RuntimePlan) -> int
     gesture_cfg = config_from_settings(config.gesture)
     debounce_cfg = debounce_config_from_settings(config.debounce)
 
-    previous_x = previous_y = 0.0
+    previous_x, previous_y = w_screen / 2, h_screen / 2
+    screen_cursor_x, screen_cursor_y = w_screen / 2, h_screen / 2
     click_debounce = ClickDebounceState()
     pause_toggle = PauseToggleState()
     safety = SafetyState()
@@ -206,14 +251,14 @@ def run_real_mouse_runtime(config: ExperimentalConfig, plan: RuntimePlan) -> int
 
         result = tracker.process(image)
         feedback = feedback_style(
-            classify_improved_gesture(GestureInput(), gesture_cfg)
+            classify_simple_real_mouse_gesture(GestureInput(), gesture_cfg)
         )
         snapshot = RuntimeSnapshot(backend_used=result.backend_used)
 
         if result.success:
             image = tracker.draw_landmarks(image, result)
             hand = _hand_input_from_tracking(result, gesture_cfg)
-            gesture = classify_improved_gesture(hand, gesture_cfg)
+            gesture = classify_simple_real_mouse_gesture(hand, gesture_cfg)
             feedback = feedback_style(gesture)
 
             pause_res = update_pause_toggle(pause_toggle, gesture.name == "pause")
@@ -242,7 +287,9 @@ def run_real_mouse_runtime(config: ExperimentalConfig, plan: RuntimePlan) -> int
                         Point(previous_x, previous_y),
                         target,
                     )
-                    autopy.mouse.move(w_screen - smoothed.x, smoothed.y)
+                    screen_cursor_x = w_screen - smoothed.x
+                    screen_cursor_y = smoothed.y
+                    mouse.move(screen_cursor_x, screen_cursor_y)
                     previous_x, previous_y = smoothed.x, smoothed.y
 
                 if gesture.click:
@@ -251,7 +298,7 @@ def run_real_mouse_runtime(config: ExperimentalConfig, plan: RuntimePlan) -> int
                     )
                     click_debounce = debounce_res.state
                     if debounce_res.emit_click:
-                        autopy.mouse.click()
+                        mouse.click()
                         snapshot = replace(snapshot, click_ready=False)
                 else:
                     debounce_res = update_click_debounce(
@@ -259,7 +306,13 @@ def run_real_mouse_runtime(config: ExperimentalConfig, plan: RuntimePlan) -> int
                     )
                     click_debounce = debounce_res.state
 
-                safety = check_safety(safety, previous_x, previous_y)
+                safety = check_safety(
+                    safety,
+                    screen_cursor_x,
+                    screen_cursor_y,
+                    screen_width=w_screen,
+                    screen_height=h_screen,
+                )
                 if safety.quit_requested:
                     print("Corner failsafe triggered. Pausing.")
                     pause_toggle = PauseToggleState(paused=True)

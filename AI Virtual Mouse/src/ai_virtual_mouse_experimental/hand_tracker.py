@@ -86,9 +86,11 @@ class HandTracker:
         return self._process_solutions(frame)
 
     def _process_tasks(self, frame: np.ndarray) -> HandTrackingResult:
+        import cv2
+
         mp = import_module("mediapipe")
-        vision = mp.tasks.vision
-        image = vision.Image(image_format=vision.ImageFormat.SRGB, data=frame)
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
         assert self._tasks_backend is not None
         result = self._tasks_backend.detect(image)
         if not result.hand_landmarks:
@@ -101,7 +103,7 @@ class HandTracker:
         h, w = frame.shape[:2]
         points = [Point(lm.x * w, lm.y * h) for lm in landmarks]
         fingers = _fingers_up(landmarks)
-        pinch = math.hypot(points[4].x - points[8].x, points[4].y - points[8].y)
+        pinch = _index_middle_distance(points)
         delta = points[8].y - points[12].y if len(points) > 12 else 0.0
         return HandTrackingResult(
             landmarks=points,
@@ -129,7 +131,7 @@ class HandTracker:
         hand_landmarks = results.multi_hand_landmarks[0]
         points = [Point(lm.x * w, lm.y * h) for lm in hand_landmarks.landmark]
         fingers = _fingers_up_solutions(hand_landmarks)
-        pinch = math.hypot(points[4].x - points[8].x, points[4].y - points[8].y)
+        pinch = _index_middle_distance(points)
         delta = points[8].y - points[12].y if len(points) > 12 else 0.0
         return HandTrackingResult(
             landmarks=points,
@@ -188,6 +190,12 @@ class HandTracker:
             self._tasks_backend.close()
         if self._solutions_backend is not None:
             self._solutions_backend.close()
+
+
+def _index_middle_distance(points: list[Point]) -> float | None:
+    if len(points) <= 12:
+        return None
+    return math.hypot(points[8].x - points[12].x, points[8].y - points[12].y)
 
 
 def _fingers_up(landmarks) -> list[int]:

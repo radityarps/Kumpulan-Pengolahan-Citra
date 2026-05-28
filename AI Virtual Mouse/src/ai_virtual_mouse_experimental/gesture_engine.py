@@ -76,13 +76,7 @@ def classify_improved_gesture(
     cfg = config or GestureEngineConfig()
 
     if is_open_palm(hand):
-        return GestureResult(
-            name="pause",
-            reason="open_palm_pause",
-            paused=True,
-            feedback_label="Paused",
-            feedback_color=(255, 193, 7),
-        )
+        return _pause_result()
 
     if hand.index and hand.middle and not hand.ring and not hand.pinky:
         if abs(hand.index_middle_vertical_delta_px) >= cfg.scroll_activation_delta_px:
@@ -104,24 +98,67 @@ def classify_improved_gesture(
                     feedback_label="Drag",
                     feedback_color=(156, 39, 176),
                 )
-            return GestureResult(
-                name="click",
-                reason="pinch_below_threshold",
-                click=True,
-                feedback_label="Click",
-                feedback_color=(76, 175, 80),
-            )
+            return _click_result("pinch_below_threshold")
 
-    if hand.index and not hand.middle:
-        return GestureResult(
-            name="move",
-            reason="index_only_move",
-            cursor_enabled=True,
-            feedback_label="Move",
-            feedback_color=(233, 30, 99),
-        )
+    if hand.index and not hand.middle and not hand.ring and not hand.pinky:
+        return _move_result()
 
     return GestureResult(name="idle", reason="no_supported_improved_gesture")
+
+
+def classify_simple_real_mouse_gesture(
+    hand: GestureInput,
+    config: GestureEngineConfig | None = None,
+) -> GestureResult:
+    """Simple Real Mouse Profile: move, stable pinch click, and pause only.
+
+    Drag and scroll are intentionally excluded from the first real mouse runtime to
+    reduce false positives while controlling the OS cursor.
+    """
+    cfg = config or GestureEngineConfig()
+
+    if is_open_palm(hand):
+        return _pause_result()
+
+    if hand.index and hand.middle and not hand.ring and not hand.pinky:
+        if is_pinching(hand, cfg):
+            return _click_result("index_middle_stable_pinch")
+        return GestureResult(name="idle", reason="index_middle_without_pinch")
+
+    if hand.index and not hand.middle and not hand.ring and not hand.pinky:
+        return _move_result()
+
+    return GestureResult(name="idle", reason="no_supported_real_mouse_gesture")
+
+
+def _pause_result() -> GestureResult:
+    return GestureResult(
+        name="pause",
+        reason="open_palm_pause",
+        paused=True,
+        feedback_label="Paused",
+        feedback_color=(255, 193, 7),
+    )
+
+
+def _click_result(reason: str) -> GestureResult:
+    return GestureResult(
+        name="click",
+        reason=reason,
+        click=True,
+        feedback_label="Click",
+        feedback_color=(76, 175, 80),
+    )
+
+
+def _move_result() -> GestureResult:
+    return GestureResult(
+        name="move",
+        reason="index_only_move",
+        cursor_enabled=True,
+        feedback_label="Move",
+        feedback_color=(233, 30, 99),
+    )
 
 
 def is_open_palm(hand: GestureInput) -> bool:
