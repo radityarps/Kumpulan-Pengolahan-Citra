@@ -900,6 +900,16 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertEqual(idle.name, "idle")
         self.assertFalse(idle.paused)
 
+    def test_pipeline_technical_metrics_compute_correctly(self):
+        from ai_virtual_mouse_experimental.hand_control_pipeline import (
+            _compute_jitter,
+        )
+
+        self.assertEqual(_compute_jitter([]), 0.0)
+        self.assertEqual(_compute_jitter([5.0]), 0.0)
+        jitter = _compute_jitter([1.0, 3.0, 1.0, 3.0])
+        self.assertAlmostEqual(jitter, 1.0, places=5)
+
 
 if __name__ == "__main__":
     unittest.main()

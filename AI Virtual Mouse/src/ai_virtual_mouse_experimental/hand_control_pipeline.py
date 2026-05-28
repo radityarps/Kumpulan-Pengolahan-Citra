@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass
 
@@ -222,6 +223,11 @@ class HandControlPipeline:
         self._safety = SafetyState()
         self._previous_time: float = 0.0
 
+        # Technical metrics
+        self._path_length: float = 0.0
+        self._fps_samples: list[float] = []
+        self._movement_deltas: list[float] = []
+
     @property
     def backend_used(self) -> str:
         return self._tracker._backend_used
@@ -263,6 +269,7 @@ class HandControlPipeline:
             if not self._pause_toggle.paused:
                 # Cursor movement
                 if gesture.cursor_enabled and result.landmarks:
+                    prev_x, prev_y = self._previous_x, self._previous_y
                     index_tip = result.landmarks[8]
                     target = map_point_to_output(
                         index_tip,
@@ -277,6 +284,13 @@ class HandControlPipeline:
                     )
                     self._previous_x, self._previous_y = smoothed.x, smoothed.y
                     cursor_target = smoothed
+
+                    # Track path length and movement delta
+                    delta = math.hypot(
+                        smoothed.x - prev_x, smoothed.y - prev_y
+                    )
+                    self._path_length += delta
+                    self._movement_deltas.append(delta)
 
                 # Click debounce (conditional)
                 if gesture.click:
@@ -322,6 +336,8 @@ class HandControlPipeline:
             else 1.0 / max(current_time - self._previous_time, 1e-6)
         )
         self._previous_time = current_time
+        if fps > 0:
+            self._fps_samples.append(fps)
 
         return HandControlFrame(
             cursor_target=cursor_target,
@@ -360,7 +376,30 @@ class HandControlPipeline:
             "smoothing_strategy": self.condition.smoothing_strategy,
             "debounce_enabled": self._debounce_enabled,
             "calibration_enabled": self.condition.calibration_enabled,
+            "technical_metrics": self.technical_metrics(),
         }
+
+    def technical_metrics(self) -> dict[str, object]:
+        """Return accumulated technical movement metrics."""
+        fps_samples = self._fps_samples
+        mean_fps = sum(fps_samples) / len(fps_samples) if fps_samples else 0.0
+        jitter = _compute_jitter(self._movement_deltas)
+        return {
+            "cursor_path_length_px": round(self._path_length, 2),
+            "mean_fps": round(mean_fps, 1),
+            "fps_sample_count": len(fps_samples),
+            "jitter_estimate_px": round(jitter, 3),
+            "movement_sample_count": len(self._movement_deltas),
+        }
+
+
+def _compute_jitter(deltas: list[float]) -> float:
+    """Compute jitter as standard deviation of movement deltas."""
+    if len(deltas) < 2:
+        return 0.0
+    mean = sum(deltas) / len(deltas)
+    variance = sum((d - mean) ** 2 for d in deltas) / len(deltas)
+    return math.sqrt(variance)
 
 
 def _classify_baseline_as_gesture_result(
