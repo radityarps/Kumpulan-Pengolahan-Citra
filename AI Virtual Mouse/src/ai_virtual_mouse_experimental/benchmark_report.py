@@ -126,6 +126,8 @@ def generate_markdown_report(
         "not captured" if metrics.fps_mean is None else f"{metrics.fps_mean:.2f}"
     )
     benchmark = metadata.get("benchmark", {})
+    hand_input = metadata.get("hand_input") if isinstance(metadata, dict) else None
+    hand_input_section = _format_hand_input_section(hand_input)
     content = f"""# AI Virtual Mouse Benchmark Report
 
 ## Session
@@ -135,7 +137,7 @@ def generate_markdown_report(
 - Backend: `{metadata.get("backend", "unknown")}`
 - Mode: `{metadata.get("mode", "unknown")}`
 - Created at UTC: `{metadata.get("created_at_utc", "unknown")}`
-
+{hand_input_section}
 ## Benchmark Parameters
 
 - Benchmark: `{benchmark.get("name", "unknown")}`
@@ -158,7 +160,7 @@ def generate_markdown_report(
 | Median completion time | {metrics.median_completion_time_s:.3f}s |
 | Jitter estimate | {metrics.jitter_estimate_px:.3f}px |
 | Mean FPS | {fps_value} |
-
+{_format_technical_metrics_rows(hand_input)}
 ## Plots
 
 ![Completion time plot]({plot_path.name})
@@ -169,6 +171,40 @@ This report summarizes a controlled point-and-click benchmark. The jitter estima
 """
     output_path.write_text(content, encoding="utf-8")
     return output_path
+
+
+def _format_hand_input_section(hand_input: Any) -> str:
+    if not isinstance(hand_input, dict):
+        return "\n"
+    technical = hand_input.get("technical_metrics")
+    technical_note = "available" if isinstance(technical, dict) else "not captured"
+    return f"""
+## Hand Input
+
+- Enabled: `true`
+- Gesture profile: `{hand_input.get("gesture_profile", "unknown")}`
+- Configured backend: `{hand_input.get("configured_backend", "unknown")}`
+- Backend used: `{hand_input.get("backend_used", "unknown")}`
+- Fallback reason: `{hand_input.get("fallback_reason") or "none"}`
+- Smoothing strategy: `{hand_input.get("smoothing_strategy", "unknown")}`
+- Debounce enabled: `{hand_input.get("debounce_enabled", "unknown")}`
+- Calibration enabled: `{hand_input.get("calibration_enabled", "unknown")}`
+- Technical metrics: `{technical_note}`
+"""
+
+
+def _format_technical_metrics_rows(hand_input: Any) -> str:
+    if not isinstance(hand_input, dict):
+        return ""
+    metrics = hand_input.get("technical_metrics")
+    if not isinstance(metrics, dict):
+        return ""
+    return (
+        f"| Cursor path length | {metrics.get('cursor_path_length_px', 'unknown')}px |\n"
+        f"| Hand-input mean FPS | {metrics.get('mean_fps', 'unknown')} |\n"
+        f"| Movement jitter estimate | {metrics.get('jitter_estimate_px', 'unknown')}px |\n"
+        f"| Movement sample count | {metrics.get('movement_sample_count', 'unknown')} |\n"
+    )
 
 
 def generate_report_from_session(session_dir: Path) -> BenchmarkReportPaths:
@@ -204,15 +240,24 @@ def generate_comparison_report(
         "",
         "This report compares saved point-and-click benchmark sessions. Use it to compare baseline, ablation, and full improved conditions under the same task. Do not claim general mouse-replacement superiority from this benchmark alone.",
         "",
-        "| Session | Condition | Backend | Hit rate | False clicks | Click count | Mean completion time | Jitter estimate |",
-        "|---|---|---|---:|---:|---:|---:|---:|",
+        "| Session | Condition | Backend | Hand input | Backend used | Hit rate | False clicks | Click count | Mean completion time | Jitter estimate |",
+        "|---|---|---|---|---|---:|---:|---:|---:|---:|",
     ]
     for session_dir, metadata, metrics in compared_rows:
+        hand_input = metadata.get("hand_input")
+        hand_enabled = "yes" if isinstance(hand_input, dict) else "no"
+        backend_used = (
+            hand_input.get("backend_used", "unknown")
+            if isinstance(hand_input, dict)
+            else metadata.get("backend", "unknown")
+        )
         lines.append(
             "| "
             f"{session_dir.name} | "
             f"{metadata.get('condition', 'unknown')} | "
             f"{metadata.get('backend', 'unknown')} | "
+            f"{hand_enabled} | "
+            f"{backend_used} | "
             f"{metrics.hit_rate:.2%} | "
             f"{metrics.false_clicks} | "
             f"{metrics.click_count} | "

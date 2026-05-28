@@ -240,6 +240,10 @@ class HandControlPipeline:
     def paused(self) -> bool:
         return self._pause_toggle.paused
 
+    @property
+    def gesture_profile(self) -> str:
+        return self._gesture_profile
+
     def process_frame(self, frame: np.ndarray) -> HandControlFrame:
         """Process one camera frame and return hand-control state.
 
@@ -286,9 +290,7 @@ class HandControlPipeline:
                     cursor_target = smoothed
 
                     # Track path length and movement delta
-                    delta = math.hypot(
-                        smoothed.x - prev_x, smoothed.y - prev_y
-                    )
+                    delta = math.hypot(smoothed.x - prev_x, smoothed.y - prev_y)
                     self._path_length += delta
                     self._movement_deltas.append(delta)
 

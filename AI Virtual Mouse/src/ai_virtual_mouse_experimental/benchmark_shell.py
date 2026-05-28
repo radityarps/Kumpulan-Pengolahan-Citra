@@ -13,7 +13,7 @@ from .benchmark_grid import (
 )
 from .benchmark_logging import format_output_paths, persist_benchmark_session
 from .config import ExperimentalConfig
-from .hand_control_pipeline import HandControlPipeline
+from .hand_control_pipeline import HandControlFrame, HandControlPipeline
 
 
 class BenchmarkShellError(RuntimeError):
@@ -79,6 +79,38 @@ def move_simulated_cursor(
         ),
         radius=state.cursor.radius,
     )
+    return _replace_cursor(state, cursor)
+
+
+def set_simulated_cursor(
+    state: BenchmarkShellState, x: float, y: float
+) -> BenchmarkShellState:
+    cursor = SimulatedCursor(
+        x=min(max(x, state.cursor.radius), state.width - state.cursor.radius),
+        y=min(max(y, state.cursor.radius), state.height - state.cursor.radius),
+        radius=state.cursor.radius,
+    )
+    return _replace_cursor(state, cursor)
+
+
+def apply_hand_frame_to_benchmark(
+    state: BenchmarkShellState,
+    benchmark,
+    hand_frame: HandControlFrame,
+    now_s: float,
+):
+    if not hand_frame.paused and hand_frame.cursor_target is not None:
+        state = set_simulated_cursor(
+            state, hand_frame.cursor_target.x, hand_frame.cursor_target.y
+        )
+    if hand_frame.click_fired:
+        benchmark = register_click(benchmark, state.cursor.x, state.cursor.y, now_s)
+    return state, benchmark
+
+
+def _replace_cursor(
+    state: BenchmarkShellState, cursor: SimulatedCursor
+) -> BenchmarkShellState:
     return BenchmarkShellState(
         width=state.width,
         height=state.height,
@@ -118,18 +150,17 @@ def run_pygame_benchmark_shell(
     cv2 = None
     if hand_input:
         cv2 = import_module("cv2")
-        prefer_tasks = plan.condition != "baseline"
         pipeline = HandControlPipeline(
             config=config,
             condition_name=plan.condition,
             output_width=state.width,
             output_height=state.height,
-            prefer_tasks=prefer_tasks,
+            prefer_tasks=True,
         )
         cap = cv2.VideoCapture(config.backend.camera_index)
         cap.set(3, config.backend.camera_width)
         cap.set(4, config.backend.camera_height)
-        print(f"Hand input enabled for benchmark. Profile: {pipeline._gesture_profile}")
+        print(f"Hand input enabled for benchmark. Profile: {pipeline.gesture_profile}")
 
     running = True
     while running:
@@ -156,34 +187,9 @@ def run_pygame_benchmark_shell(
             success, camera_image = cap.read()
             if success:
                 hand_frame = pipeline.process_frame(camera_image)
-                if not hand_frame.paused and hand_frame.cursor_target is not None:
-                    # Set simulated cursor to pipeline target directly
-                    new_x = min(
-                        max(hand_frame.cursor_target.x, state.cursor.radius),
-                        state.width - state.cursor.radius,
-                    )
-                    new_y = min(
-                        max(hand_frame.cursor_target.y, state.cursor.radius),
-                        state.height - state.cursor.radius,
-                    )
-                    state = BenchmarkShellState(
-                        width=state.width,
-                        height=state.height,
-                        condition=state.condition,
-                        backend=state.backend,
-                        cursor=SimulatedCursor(
-                            x=new_x, y=new_y, radius=state.cursor.radius
-                        ),
-                        safe_quit_keys=state.safe_quit_keys,
-                        controls_real_mouse=state.controls_real_mouse,
-                    )
-                if hand_frame.click_fired:
-                    benchmark = register_click(
-                        benchmark,
-                        state.cursor.x,
-                        state.cursor.y,
-                        time.perf_counter(),
-                    )
+                state, benchmark = apply_hand_frame_to_benchmark(
+                    state, benchmark, hand_frame, time.perf_counter()
+                )
 
         # Keyboard fallback controls
         keys = pygame.key.get_pressed()

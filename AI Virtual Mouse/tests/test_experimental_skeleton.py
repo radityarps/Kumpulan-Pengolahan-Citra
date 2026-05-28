@@ -25,6 +25,9 @@ cli_module = import_module("ai_virtual_mouse_experimental.cli")
 config_module = import_module("ai_virtual_mouse_experimental.config")
 cursor_mapping_module = import_module("ai_virtual_mouse_experimental.cursor_mapping")
 gesture_engine_module = import_module("ai_virtual_mouse_experimental.gesture_engine")
+hand_control_pipeline_module = import_module(
+    "ai_virtual_mouse_experimental.hand_control_pipeline"
+)
 tasks_backend_module = import_module("ai_virtual_mouse_experimental.tasks_backend")
 
 StartupError = app_module.StartupError
@@ -33,7 +36,9 @@ build_baseline_metadata = baseline_module.build_baseline_metadata
 classify_baseline_gesture = baseline_module.classify_baseline_gesture
 benchmark_instruction_lines = benchmark_shell_module.benchmark_instruction_lines
 create_benchmark_shell_state = benchmark_shell_module.create_benchmark_shell_state
+apply_hand_frame_to_benchmark = benchmark_shell_module.apply_hand_frame_to_benchmark
 move_simulated_cursor = benchmark_shell_module.move_simulated_cursor
+run_pygame_benchmark_shell = benchmark_shell_module.run_pygame_benchmark_shell
 create_point_click_benchmark = benchmark_grid_module.create_point_click_benchmark
 generate_grid_targets = benchmark_grid_module.generate_grid_targets
 register_click = benchmark_grid_module.register_click
@@ -41,8 +46,10 @@ start_current_trial = benchmark_grid_module.start_current_trial
 summarize_benchmark = benchmark_grid_module.summarize_benchmark
 format_output_paths = benchmark_logging_module.format_output_paths
 persist_benchmark_session = benchmark_logging_module.persist_benchmark_session
+BenchmarkMetrics = benchmark_report_module.BenchmarkMetrics
 compute_metrics = benchmark_report_module.compute_metrics
 generate_comparison_report = benchmark_report_module.generate_comparison_report
+generate_markdown_report = benchmark_report_module.generate_markdown_report
 generate_report_from_session = benchmark_report_module.generate_report_from_session
 load_trials_csv = benchmark_report_module.load_trials_csv
 main = cli_module.main
@@ -74,6 +81,12 @@ build_tasks_backend_metadata = tasks_backend_module.build_tasks_backend_metadata
 download_hand_landmarker_model = tasks_backend_module.download_hand_landmarker_model
 ensure_hand_landmarker_model = tasks_backend_module.ensure_hand_landmarker_model
 resolve_model_path = tasks_backend_module.resolve_model_path
+HandControlFrame = hand_control_pipeline_module.HandControlFrame
+_classify_baseline_as_gesture_result = (
+    hand_control_pipeline_module._classify_baseline_as_gesture_result
+)
+_compute_jitter = hand_control_pipeline_module._compute_jitter
+hand_input_from_tracking = hand_control_pipeline_module.hand_input_from_tracking
 BackendError = tasks_backend_module.BackendError
 
 
@@ -825,13 +838,7 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertEqual(result.fallback_reason, "model not found")
 
     def test_hand_control_pipeline_exposes_shared_interface(self):
-        from ai_virtual_mouse_experimental.hand_control_pipeline import (
-            HandControlFrame,
-            hand_input_from_tracking,
-        )
-        from ai_virtual_mouse_experimental.gesture_engine import GestureEngineConfig
         from ai_virtual_mouse_experimental.hand_tracker import HandTrackingResult
-        from ai_virtual_mouse_experimental.cursor_mapping import Point
 
         # Verify hand_input_from_tracking works
         result = HandTrackingResult(
@@ -866,9 +873,6 @@ class ExperimentalSkeletonTests(unittest.TestCase):
 
     def test_benchmark_shell_accepts_hand_input_flag(self):
         """Verify benchmark shell function signature accepts hand_input parameter."""
-        from ai_virtual_mouse_experimental.benchmark_shell import (
-            run_pygame_benchmark_shell,
-        )
         import inspect
 
         sig = inspect.signature(run_pygame_benchmark_shell)
@@ -876,10 +880,6 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertEqual(sig.parameters["hand_input"].default, False)
 
     def test_pipeline_baseline_gesture_profile_uses_tutorial_behavior(self):
-        from ai_virtual_mouse_experimental.hand_control_pipeline import (
-            _classify_baseline_as_gesture_result,
-        )
-
         move = _classify_baseline_as_gesture_result(
             GestureInput(index=True), GestureEngineConfig()
         )
@@ -901,15 +901,91 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertFalse(idle.paused)
 
     def test_pipeline_technical_metrics_compute_correctly(self):
-        from ai_virtual_mouse_experimental.hand_control_pipeline import (
-            _compute_jitter,
-        )
-
         self.assertEqual(_compute_jitter([]), 0.0)
         self.assertEqual(_compute_jitter([5.0]), 0.0)
         jitter = _compute_jitter([1.0, 3.0, 1.0, 3.0])
         self.assertAlmostEqual(jitter, 1.0, places=5)
 
+
+    def test_hand_frame_updates_simulated_benchmark_without_os_mouse(self):
+        config = load_config(CONFIG_PATH)
+        plan = build_runtime_plan(
+            config, mode_name="benchmark", condition_name="baseline"
+        )
+        state = create_benchmark_shell_state(config, plan)
+        benchmark = start_current_trial(
+            create_point_click_benchmark(config.benchmark), 1.0
+        )
+        target = benchmark.current_target
+        self.assertIsNotNone(target)
+        frame = HandControlFrame(
+            cursor_target=Point(target.x, target.y),
+            click_fired=True,
+            paused=False,
+        )
+
+        updated_state, updated_benchmark = apply_hand_frame_to_benchmark(
+            state, benchmark, frame, 2.0
+        )
+
+        self.assertEqual(updated_state.cursor.x, target.x)
+        self.assertEqual(updated_state.cursor.y, target.y)
+        self.assertEqual(len(updated_benchmark.results), 1)
+        self.assertTrue(updated_benchmark.results[0].hit)
+        self.assertFalse(updated_state.controls_real_mouse)
+
+    def test_report_includes_hand_input_metadata_and_metrics(self):
+        metadata = {
+            "session_id": "session-test",
+            "condition": "improved",
+            "backend": "mediapipe_tasks",
+            "mode": "benchmark",
+            "created_at_utc": "20260528T000000Z",
+            "benchmark": {
+                "name": "point_click_grid",
+                "target_count": 1,
+                "target_radius": 24,
+                "window_width": 960,
+                "window_height": 640,
+                "random_seed": 1,
+            },
+            "hand_input": {
+                "gesture_profile": "simple",
+                "configured_backend": "mediapipe_tasks",
+                "backend_used": "mediapipe_tasks",
+                "fallback_reason": None,
+                "smoothing_strategy": "adaptive",
+                "debounce_enabled": True,
+                "calibration_enabled": True,
+                "technical_metrics": {
+                    "cursor_path_length_px": 123.4,
+                    "mean_fps": 30.0,
+                    "jitter_estimate_px": 2.5,
+                    "movement_sample_count": 7,
+                },
+            },
+        }
+        metrics = BenchmarkMetrics(
+            total_trials=1,
+            hit_count=1,
+            miss_count=0,
+            hit_rate=1.0,
+            false_clicks=0,
+            click_count=1,
+            mean_completion_time_s=1.0,
+            median_completion_time_s=1.0,
+            jitter_estimate_px=0.0,
+            fps_mean=None,
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "report.md"
+            plot = Path(tmpdir) / "completion_times.svg"
+            generate_markdown_report(metadata, metrics, plot, output)
+            report = output.read_text(encoding="utf-8")
+
+        self.assertIn("## Hand Input", report)
+        self.assertIn("Backend used: `mediapipe_tasks`", report)
+        self.assertIn("Cursor path length", report)
 
 if __name__ == "__main__":
     unittest.main()
