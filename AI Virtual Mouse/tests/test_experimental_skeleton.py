@@ -38,6 +38,7 @@ benchmark_instruction_lines = benchmark_shell_module.benchmark_instruction_lines
 create_benchmark_shell_state = benchmark_shell_module.create_benchmark_shell_state
 apply_hand_frame_to_benchmark = benchmark_shell_module.apply_hand_frame_to_benchmark
 move_simulated_cursor = benchmark_shell_module.move_simulated_cursor
+prefer_tasks_for_hand_benchmark = benchmark_shell_module.prefer_tasks_for_hand_benchmark
 run_pygame_benchmark_shell = benchmark_shell_module.run_pygame_benchmark_shell
 create_point_click_benchmark = benchmark_grid_module.create_point_click_benchmark
 generate_grid_targets = benchmark_grid_module.generate_grid_targets
@@ -906,7 +907,6 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         jitter = _compute_jitter([1.0, 3.0, 1.0, 3.0])
         self.assertAlmostEqual(jitter, 1.0, places=5)
 
-
     def test_hand_frame_updates_simulated_benchmark_without_os_mouse(self):
         config = load_config(CONFIG_PATH)
         plan = build_runtime_plan(
@@ -933,6 +933,32 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertEqual(len(updated_benchmark.results), 1)
         self.assertTrue(updated_benchmark.results[0].hit)
         self.assertFalse(updated_state.controls_real_mouse)
+
+    def test_hand_frame_ignores_click_while_paused(self):
+        config = load_config(CONFIG_PATH)
+        plan = build_runtime_plan(
+            config, mode_name="benchmark", condition_name="improved"
+        )
+        state = create_benchmark_shell_state(config, plan)
+        benchmark = start_current_trial(
+            create_point_click_benchmark(config.benchmark), 1.0
+        )
+        frame = HandControlFrame(
+            cursor_target=Point(10, 10),
+            click_fired=True,
+            paused=True,
+        )
+
+        updated_state, updated_benchmark = apply_hand_frame_to_benchmark(
+            state, benchmark, frame, 2.0
+        )
+
+        self.assertEqual(updated_state.cursor, state.cursor)
+        self.assertEqual(len(updated_benchmark.results), 0)
+
+    def test_hand_benchmark_prefers_available_tasks_backend(self):
+        self.assertTrue(prefer_tasks_for_hand_benchmark("baseline"))
+        self.assertTrue(prefer_tasks_for_hand_benchmark("improved"))
 
     def test_report_includes_hand_input_metadata_and_metrics(self):
         metadata = {
@@ -986,6 +1012,7 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertIn("## Hand Input", report)
         self.assertIn("Backend used: `mediapipe_tasks`", report)
         self.assertIn("Cursor path length", report)
+
 
 if __name__ == "__main__":
     unittest.main()

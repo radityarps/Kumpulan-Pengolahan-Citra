@@ -173,7 +173,7 @@ PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark --condit
 PYTHONPATH=src python -m ai_virtual_mouse_experimental --mode benchmark --condition improved --hand-input
 ```
 
-The simulated cursor follows your hand gestures. The OS mouse is never moved during benchmark evaluation. Keyboard controls remain available as fallback.
+The simulated cursor follows your hand gestures. The OS mouse is never moved during benchmark evaluation. Keyboard controls remain available as fallback. Both baseline and improved hand-input runs can use `.venv-improved`; the condition controls gesture semantics, while metadata records the actual backend used.
 
 ## Benchmark Outputs
 

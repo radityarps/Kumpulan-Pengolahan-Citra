@@ -41,6 +41,8 @@ PYTHONPATH=src python -m ai_virtual_mouse_experimental --compare-sessions output
 
 When `--hand-input` is passed, the benchmark uses webcam hand gestures to drive the simulated Pygame cursor. The cursor remains simulated and the OS mouse is never moved during benchmark evaluation.
 
+Both baseline and improved hand-input benchmark commands can run from `.venv-improved`. The runtime prefers the available MediaPipe Tasks tracker for hand-input sessions; the selected condition controls gesture semantics. Logs record both configured backend and actual backend used, so reports do not hide backend differences.
+
 The hand-control pipeline shared with the Real Mouse Runtime processes each camera frame and produces cursor movement and click intent. The benchmark applies these to the simulated cursor position.
 
 Baseline hand benchmark uses tutorial-style gestures (index-only move, index+middle pinch click, no pause, no debounce). Improved hand benchmark uses the modern gesture profile (Stable Pinch Click, adaptive smoothing, debounce, pause toggle).

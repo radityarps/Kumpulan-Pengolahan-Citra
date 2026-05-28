@@ -103,9 +103,14 @@ def apply_hand_frame_to_benchmark(
         state = set_simulated_cursor(
             state, hand_frame.cursor_target.x, hand_frame.cursor_target.y
         )
-    if hand_frame.click_fired:
+    if not hand_frame.paused and hand_frame.click_fired:
         benchmark = register_click(benchmark, state.cursor.x, state.cursor.y, now_s)
     return state, benchmark
+
+
+def prefer_tasks_for_hand_benchmark(condition_name: str) -> bool:
+    """Prefer available Tasks backend for hand benchmark; condition controls semantics."""
+    return True
 
 
 def _replace_cursor(
@@ -155,7 +160,7 @@ def run_pygame_benchmark_shell(
             condition_name=plan.condition,
             output_width=state.width,
             output_height=state.height,
-            prefer_tasks=True,
+            prefer_tasks=prefer_tasks_for_hand_benchmark(plan.condition),
         )
         cap = cv2.VideoCapture(config.backend.camera_index)
         cap.set(3, config.backend.camera_width)
