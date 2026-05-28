@@ -106,8 +106,11 @@ def write_session_metadata(
     config: ExperimentalConfig,
     plan: RuntimePlan,
     paths: BenchmarkSessionPaths,
+    hand_input_metadata: dict | None = None,
 ) -> Path:
     metadata = build_session_metadata(config, plan, paths)
+    if hand_input_metadata is not None:
+        metadata["hand_input"] = hand_input_metadata
     paths.metadata_path.write_text(
         json.dumps(metadata, indent=2, sort_keys=True), encoding="utf-8"
     )
@@ -166,9 +169,10 @@ def persist_benchmark_session(
     plan: RuntimePlan,
     output_root: Path | None = None,
     generate_report: bool = True,
+    hand_input_metadata: dict | None = None,
 ) -> BenchmarkSessionPaths:
     paths = create_session_paths(config, plan, output_root=output_root)
-    write_session_metadata(config, plan, paths)
+    write_session_metadata(config, plan, paths, hand_input_metadata=hand_input_metadata)
     write_trials_csv(state, config, plan, paths)
     if generate_report:
         benchmark_report = import_module(

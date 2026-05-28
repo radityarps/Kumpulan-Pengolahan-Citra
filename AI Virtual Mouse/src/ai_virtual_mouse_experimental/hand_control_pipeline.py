@@ -27,6 +27,10 @@ from .gesture_engine import (
 )
 from .hand_tracker import HandTracker, HandTrackingResult
 
+GESTURE_PROFILE_BASELINE = "baseline"
+GESTURE_PROFILE_SIMPLE = "simple"
+GESTURE_PROFILE_IMPROVED = "improved"
+
 
 @dataclass(frozen=True)
 class HandControlFrame:
@@ -179,17 +183,28 @@ class HandControlPipeline:
         output_height: int,
         prefer_tasks: bool = True,
         use_simple_profile: bool = True,
+        gesture_profile: str | None = None,
     ):
         self.config = config
         self.condition_name = condition_name
         self.condition = config.get_condition(condition_name)
         self.output_width = output_width
         self.output_height = output_height
-        self.use_simple_profile = use_simple_profile
+
+        # Determine gesture profile
+        if gesture_profile is not None:
+            self._gesture_profile = gesture_profile
+        elif condition_name == "baseline":
+            self._gesture_profile = GESTURE_PROFILE_BASELINE
+        elif use_simple_profile:
+            self._gesture_profile = GESTURE_PROFILE_SIMPLE
+        else:
+            self._gesture_profile = GESTURE_PROFILE_IMPROVED
 
         self._tracker = HandTracker(config, prefer_tasks=prefer_tasks)
         self._gesture_cfg = config_from_settings(config.gesture)
         self._debounce_cfg = debounce_config_from_settings(config.debounce)
+        self._debounce_enabled = self.condition.debounce_enabled
 
         fallback_bounds = default_camera_bounds(
             config.backend.camera_width, config.backend.camera_height
@@ -263,18 +278,28 @@ class HandControlPipeline:
                     self._previous_x, self._previous_y = smoothed.x, smoothed.y
                     cursor_target = smoothed
 
-                # Click debounce
+                # Click debounce (conditional)
                 if gesture.click:
-                    debounce_res = update_click_debounce(
-                        self._click_debounce, True, time.time(), self._debounce_cfg
-                    )
-                    self._click_debounce = debounce_res.state
-                    click_fired = debounce_res.emit_click
+                    if self._debounce_enabled:
+                        debounce_res = update_click_debounce(
+                            self._click_debounce,
+                            True,
+                            time.time(),
+                            self._debounce_cfg,
+                        )
+                        self._click_debounce = debounce_res.state
+                        click_fired = debounce_res.emit_click
+                    else:
+                        click_fired = True
                 else:
-                    debounce_res = update_click_debounce(
-                        self._click_debounce, False, time.time(), self._debounce_cfg
-                    )
-                    self._click_debounce = debounce_res.state
+                    if self._debounce_enabled:
+                        debounce_res = update_click_debounce(
+                            self._click_debounce,
+                            False,
+                            time.time(),
+                            self._debounce_cfg,
+                        )
+                        self._click_debounce = debounce_res.state
 
                 # Safety
                 if cursor_target is not None:
@@ -317,6 +342,61 @@ class HandControlPipeline:
         self._tracker.close()
 
     def _classify(self, hand: GestureInput) -> GestureResult:
-        if self.use_simple_profile:
+        if self._gesture_profile == GESTURE_PROFILE_BASELINE:
+            return _classify_baseline_as_gesture_result(hand, self._gesture_cfg)
+        if self._gesture_profile == GESTURE_PROFILE_SIMPLE:
             return classify_simple_real_mouse_gesture(hand, self._gesture_cfg)
         return classify_improved_gesture(hand, self._gesture_cfg)
+
+    def build_metadata(self) -> dict[str, object]:
+        """Return metadata dict suitable for benchmark session logging."""
+        return {
+            "hand_input": True,
+            "condition": self.condition_name,
+            "gesture_profile": self._gesture_profile,
+            "configured_backend": self.condition.backend,
+            "backend_used": self._tracker._backend_used,
+            "fallback_reason": self._tracker._fallback_reason,
+            "smoothing_strategy": self.condition.smoothing_strategy,
+            "debounce_enabled": self._debounce_enabled,
+            "calibration_enabled": self.condition.calibration_enabled,
+        }
+
+
+def _classify_baseline_as_gesture_result(
+    hand: GestureInput, config: GestureEngineConfig
+) -> GestureResult:
+    """Baseline tutorial gesture: index-only move, index+middle pinch click.
+
+    No pause, no drag, no scroll. Matches frozen video behavior.
+    """
+    if hand.index and not hand.middle and not hand.ring and not hand.pinky:
+        return GestureResult(
+            name="move",
+            reason="baseline_index_only",
+            cursor_enabled=True,
+            feedback_label="Move",
+            feedback_color=(233, 30, 99),
+        )
+
+    if hand.index and hand.middle and not hand.ring and not hand.pinky:
+        if (
+            hand.pinch_distance_px is not None
+            and hand.pinch_distance_px < config.click_threshold_px
+        ):
+            return GestureResult(
+                name="click",
+                reason="baseline_index_middle_pinch",
+                click=True,
+                feedback_label="Click",
+                feedback_color=(76, 175, 80),
+            )
+        return GestureResult(
+            name="idle",
+            reason="baseline_index_middle_no_pinch",
+            cursor_enabled=True,
+            feedback_label="Click Ready",
+            feedback_color=(255, 193, 7),
+        )
+
+    return GestureResult(name="idle", reason="baseline_no_gesture")

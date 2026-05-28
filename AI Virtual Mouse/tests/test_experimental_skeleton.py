@@ -875,6 +875,31 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         self.assertIn("hand_input", sig.parameters)
         self.assertEqual(sig.parameters["hand_input"].default, False)
 
+    def test_pipeline_baseline_gesture_profile_uses_tutorial_behavior(self):
+        from ai_virtual_mouse_experimental.hand_control_pipeline import (
+            _classify_baseline_as_gesture_result,
+        )
+
+        move = _classify_baseline_as_gesture_result(
+            GestureInput(index=True), GestureEngineConfig()
+        )
+        click = _classify_baseline_as_gesture_result(
+            GestureInput(index=True, middle=True, pinch_distance_px=20),
+            GestureEngineConfig(),
+        )
+        idle = _classify_baseline_as_gesture_result(
+            GestureInput(index=True, middle=True, ring=True, pinky=True),
+            GestureEngineConfig(),
+        )
+
+        self.assertEqual(move.name, "move")
+        self.assertTrue(move.cursor_enabled)
+        self.assertEqual(click.name, "click")
+        self.assertTrue(click.click)
+        # Baseline does NOT support pause
+        self.assertEqual(idle.name, "idle")
+        self.assertFalse(idle.paused)
+
 
 if __name__ == "__main__":
     unittest.main()

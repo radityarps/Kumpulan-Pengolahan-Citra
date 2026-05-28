@@ -118,7 +118,6 @@ def run_pygame_benchmark_shell(
     cv2 = None
     if hand_input:
         cv2 = import_module("cv2")
-        use_simple = plan.condition != "baseline"
         prefer_tasks = plan.condition != "baseline"
         pipeline = HandControlPipeline(
             config=config,
@@ -126,12 +125,11 @@ def run_pygame_benchmark_shell(
             output_width=state.width,
             output_height=state.height,
             prefer_tasks=prefer_tasks,
-            use_simple_profile=use_simple,
         )
         cap = cv2.VideoCapture(config.backend.camera_index)
         cap.set(3, config.backend.camera_width)
         cap.set(4, config.backend.camera_height)
-        print("Hand input enabled for benchmark. Camera active.")
+        print(f"Hand input enabled for benchmark. Profile: {pipeline._gesture_profile}")
 
     running = True
     while running:
@@ -260,9 +258,12 @@ def run_pygame_benchmark_shell(
 
     if cap is not None:
         cap.release()
+    hand_metadata = pipeline.build_metadata() if pipeline is not None else None
     if pipeline is not None:
         pipeline.close()
-    paths = persist_benchmark_session(benchmark, config, plan)
+    paths = persist_benchmark_session(
+        benchmark, config, plan, hand_input_metadata=hand_metadata
+    )
     pygame.quit()
     print(format_output_paths(paths))
     return 0
