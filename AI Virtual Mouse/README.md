@@ -143,6 +143,7 @@ The real mouse runtime includes an overlay showing active gesture, paused state,
 | Press `q` in the OpenCV window | Exit application |
 | Hold cursor in corner | Pause failsafe |
 
+See [`docs/REAL_MOUSE_GESTURE_GUIDE.md`](docs/REAL_MOUSE_GESTURE_GUIDE.md) for the full improved runtime gesture guide.
 See [`docs/USER_GUIDE.md`](docs/USER_GUIDE.md) for full operating instructions.
 
 ## Configuration
@@ -168,6 +169,7 @@ Experimental runtime settings are defined in `config/experimental.toml`, includi
 
 - [Installation Guide](docs/INSTALLATION.md)
 - [User Guide](docs/USER_GUIDE.md)
+- [Real Mouse Gesture Guide](docs/REAL_MOUSE_GESTURE_GUIDE.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Development Guide](docs/DEVELOPMENT.md)

@@ -97,6 +97,8 @@ if length < 40:
 
 The modern Real Mouse Runtime uses your webcam to control the actual OS cursor. It supports the **Simple Real Mouse Profile**: move, stable pinch click, and pause toggle. Drag and scroll are not enabled in the first real mouse program.
 
+For detailed hand shapes, tuning values, and a smoke-test checklist, see [`REAL_MOUSE_GESTURE_GUIDE.md`](REAL_MOUSE_GESTURE_GUIDE.md).
+
 Run the improved real mouse demo:
 
 ```bash
