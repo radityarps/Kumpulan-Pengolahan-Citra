@@ -21,21 +21,21 @@ The main contributions of this paper are as follows:
 - A descriptive analysis of five baseline and five improved hand-input benchmark sessions using hit rate, false clicks, total clicks, completion time, and hit-position jitter.
 - A conservative interpretation of the observed trade-off between click reliability and completion time.
 
-The structure of this paper follows the experimental style of Pan et al. [1]: a background section introduces the technology and benchmark context, system design and methodology sections describe the implementation and evaluation, results are reported through tables and cautious interpretation, and the final sections discuss limitations and future work.
+The structure of this paper follows the experimental style of Pan et al. [@pan_yolo-ecn_2026]: a background section introduces the technology and benchmark context, system design and methodology sections describe the implementation and evaluation, results are reported through tables and cautious interpretation, and the final sections discuss limitations and future work.
 
 ## 2. Related Work / Background
 
-Camera-based hand interaction systems commonly combine hand detection, landmark estimation, gesture classification, and command execution. Earlier virtual mouse systems often used fingertip detection or depth information to map hand motion into cursor movement [10]. More recent prototypes often use MediaPipe because it provides real-time hand landmark tracking suitable for webcam-based applications [2], [3].
+Camera-based hand interaction systems commonly combine hand detection, landmark estimation, gesture classification, and command execution. Earlier virtual mouse systems often used fingertip detection or depth information to map hand motion into cursor movement [@tran_real-time_2021]. Recent work has also explored on-device custom hand gesture recognition for interactive applications [@uboweja_-device_2023]. More recent prototypes often use MediaPipe because it provides real-time hand landmark tracking suitable for webcam-based applications [@lugaresi_mediapipe_2019; @zhang_mediapipe_2020].
 
-MediaPipe is a framework for building perception pipelines that combine reusable processing components for real-time applications [2]. MediaPipe Hands estimates a hand skeleton from RGB camera input using a palm detector and a hand landmark model [3]. In tutorial-style Python projects, this is commonly accessed through MediaPipe Solutions Hands, which exposes a high-level `Hands` object and returns landmark results through the legacy `mediapipe.solutions` namespace.
+MediaPipe is a framework for building perception pipelines that combine reusable processing components for real-time applications [@lugaresi_mediapipe_2019]. MediaPipe Hands estimates a hand skeleton from RGB camera input using a palm detector and a hand landmark model [@zhang_mediapipe_2020]. In tutorial-style Python projects, this is commonly accessed through MediaPipe Solutions Hands, which exposes a high-level `Hands` object and returns landmark results through the legacy `mediapipe.solutions` namespace.
 
-MediaPipe Tasks represents a newer task-oriented API. The Hand Landmarker task loads a `.task` model bundle and exposes explicit options for image, video, or live-stream inference. It outputs hand landmarks in image coordinates, world-coordinate landmarks, and handedness information [4]. In this project, the improved runtime treats MediaPipe Tasks as the primary backend and records fallback metadata if the Tasks backend cannot initialize. This distinction matters for reproducibility: MediaPipe Solutions describes the older tutorial-compatible API family, whereas MediaPipe Tasks describes the newer task-based backend used by the improved implementation.
+MediaPipe Tasks represents a newer task-oriented API. The Hand Landmarker task loads a `.task` model bundle and exposes explicit options for image, video, or live-stream inference. It outputs hand landmarks in image coordinates, world-coordinate landmarks, and handedness information [@google_ai_edge_hand_2026]. In this project, the improved runtime treats MediaPipe Tasks as the primary backend and records fallback metadata if the Tasks backend cannot initialize. This distinction matters for reproducibility: MediaPipe Solutions describes the older tutorial-compatible API family, whereas MediaPipe Tasks describes the newer task-based backend used by the improved implementation.
 
-The benchmark in this work is also informed by pointing-device evaluation. Fitts' law established a foundational model for target-directed movement [5], and MacKenzie later discussed its role as a research and design tool in human-computer interaction [6]. The present benchmark is not a full ISO pointing-device conformance test, but it follows the same broad principle that pointing interfaces should be evaluated through controlled target acquisition tasks rather than only through visual demonstrations [7].
+The benchmark in this work is also informed by pointing-device evaluation. Fitts' law established a foundational model for target-directed movement [@fitts_information_1954], and MacKenzie later discussed its role as a research and design tool in human-computer interaction [@mackenzie_fitts_1992]. The present benchmark is not a full ISO pointing-device conformance test, but it follows the same broad principle that pointing interfaces should be evaluated through controlled target acquisition tasks rather than only through visual demonstrations [@international_organization_for_standardization_isots_2012].
 
 ## 3. System Design
 
-The AI Virtual Mouse repository contains two relevant implementations. The first is a frozen tutorial-style implementation in `src/video version/`, which uses OpenCV, MediaPipe Solutions Hands, NumPy coordinate interpolation, and AutoPy to move and click the real operating-system cursor. The second is an experimental prototype under `src/ai_virtual_mouse_experimental/`, which separates configuration, tracking, gesture classification, cursor mapping, smoothing, benchmark logging, and report generation.
+The AI Virtual Mouse repository contains two relevant implementations. The first is a frozen tutorial-style implementation in `src/video version/`, which uses OpenCV [@bradski_opencv_2000], MediaPipe Solutions Hands, NumPy coordinate interpolation, and AutoPy to move and click the real operating-system cursor. The second is an experimental prototype under `src/ai_virtual_mouse_experimental/`, which separates configuration, tracking, gesture classification, cursor mapping, smoothing, benchmark logging, and report generation.
 
 ### 3.1 Baseline Pipeline
 
@@ -55,7 +55,7 @@ Adaptive smoothing is used to balance stability and responsiveness. Small moveme
 
 ### 3.3 Benchmark Safety
 
-The benchmark mode is intentionally separated from real mouse control. It renders a target and a simulated cursor inside a Pygame window. Hand-control output updates the simulated cursor position and simulated click state only. The benchmark state explicitly records that it does not control the real operating-system mouse. This design reduces risk during data collection because unstable hand input cannot move or click the user's desktop.
+The benchmark mode is intentionally separated from real mouse control. It renders a target and a simulated cursor inside a Pygame window [@pygame_developers_pygame_2026]. Hand-control output updates the simulated cursor position and simulated click state only. The benchmark state explicitly records that it does not control the real operating-system mouse. This design reduces risk during data collection because unstable hand input cannot move or click the user's desktop.
 
 The real mouse runtime remains available as a separate demo mode and requires explicit permission through the runtime flag. It uses additional safety controls, including keyboard quit, open-palm pause, and a corner failsafe. These runtime features support demonstration use, but the results in this paper come from benchmark mode only.
 
@@ -161,25 +161,25 @@ The strongest supported conclusion is therefore limited and specific: the improv
 
 ## References
 
-[1] W. Pan, C. Liu, L. Quan, X. Du, Y. Song, J. Ning, and L. Chen, "YOLO-ECN: An efficient tea bud recognition model based on YOLOv10s," *Smart Agricultural Technology*, vol. 14, Art. no. 102048, 2026, doi: 10.1016/j.atech.2026.102048.
+[@pan_yolo-ecn_2026] W. Pan, C. Liu, L. Quan, X. Du, Y. Song, J. Ning, and L. Chen, "YOLO-ECN: An efficient tea bud recognition model based on YOLOv10s," *Smart Agricultural Technology*, vol. 14, Art. no. 102048, 2026, doi: 10.1016/j.atech.2026.102048.
 
-[2] C. Lugaresi et al., "MediaPipe: A Framework for Building Perception Pipelines," arXiv:1906.08172, 2019.
+[@lugaresi_mediapipe_2019] C. Lugaresi et al., "MediaPipe: A Framework for Building Perception Pipelines," arXiv:1906.08172, 2019.
 
-[3] F. Zhang, V. Bazarevsky, A. Vakunov, A. Tkachenka, G. Sung, C.-L. Chang, and M. Grundmann, "MediaPipe Hands: On-device Real-time Hand Tracking," arXiv:2006.10214, 2020.
+[@zhang_mediapipe_2020] F. Zhang, V. Bazarevsky, A. Vakunov, A. Tkachenka, G. Sung, C.-L. Chang, and M. Grundmann, "MediaPipe Hands: On-device Real-time Hand Tracking," arXiv:2006.10214, 2020.
 
-[4] Google AI Edge, "Hand landmarks detection guide," MediaPipe Solutions, last updated Apr. 21, 2026. [Online]. Available: https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker
+[@google_ai_edge_hand_2026] Google AI Edge, "Hand landmarks detection guide," MediaPipe Solutions, last updated Apr. 21, 2026. [Online]. Available: https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker
 
-[5] P. M. Fitts, "The information capacity of the human motor system in controlling the amplitude of movement," *Journal of Experimental Psychology*, vol. 47, no. 6, pp. 381-391, 1954, doi: 10.1037/h0055392.
+[@fitts_information_1954] P. M. Fitts, "The information capacity of the human motor system in controlling the amplitude of movement," *Journal of Experimental Psychology*, vol. 47, no. 6, pp. 381-391, 1954, doi: 10.1037/h0055392.
 
-[6] I. S. MacKenzie, "Fitts' law as a research and design tool in human-computer interaction," *Human-Computer Interaction*, vol. 7, no. 1, pp. 91-139, 1992, doi: 10.1207/s15327051hci0701_3.
+[@mackenzie_fitts_1992] I. S. MacKenzie, "Fitts' law as a research and design tool in human-computer interaction," *Human-Computer Interaction*, vol. 7, no. 1, pp. 91-139, 1992, doi: 10.1207/s15327051hci0701_3.
 
-[7] ISO, "ISO/TS 9241-411:2012 Ergonomics of human-system interaction - Part 411: Evaluation methods for the design of physical input devices," International Organization for Standardization, 2012.
+[@international_organization_for_standardization_isots_2012] ISO, "ISO/TS 9241-411:2012 Ergonomics of human-system interaction - Part 411: Evaluation methods for the design of physical input devices," International Organization for Standardization, 2012.
 
-[8] G. Bradski, "The OpenCV Library," *Dr. Dobb's Journal of Software Tools*, 2000.
+[@bradski_opencv_2000] G. Bradski, "The OpenCV Library," *Dr. Dobb's Journal of Software Tools*, 2000.
 
-[9] E. Uboweja, D. Tian, Q. Wang, Y.-C. Kuo, J. Zou, L. Wang, G. Sung, and M. Grundmann, "On-Device Real-Time Custom Hand Gesture Recognition," in *Proc. IEEE/CVF International Conference on Computer Vision Workshops*, 2023, pp. 4273-4277.
+[@uboweja_-device_2023] E. Uboweja, D. Tian, Q. Wang, Y.-C. Kuo, J. Zou, L. Wang, G. Sung, and M. Grundmann, "On-Device Real-Time Custom Hand Gesture Recognition," in *Proc. IEEE/CVF International Conference on Computer Vision Workshops*, 2023, pp. 4273-4277.
 
-[10] D.-S. Tran, N.-H. Ho, H.-J. Yang, S.-H. Kim, and G. S. Lee, "Real-time virtual mouse system using RGB-D images and fingertip detection," *Multimedia Tools and Applications*, vol. 80, pp. 10473-10490, 2021, doi: 10.1007/s11042-020-10156-5.
+[@tran_real-time_2021] D.-S. Tran, N.-H. Ho, H.-J. Yang, S.-H. Kim, and G. S. Lee, "Real-time virtual mouse system using RGB-D images and fingertip detection," *Multimedia Tools and Applications*, vol. 80, pp. 10473-10490, 2021, doi: 10.1007/s11042-020-10156-5.
 
-[11] pygame developers, "pygame documentation," 2026. [Online]. Available: https://www.pygame.org/docs/
+[@pygame_developers_pygame_2026] pygame developers, "pygame documentation," 2026. [Online]. Available: https://www.pygame.org/docs/
 
