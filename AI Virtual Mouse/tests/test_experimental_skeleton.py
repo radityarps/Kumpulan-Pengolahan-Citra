@@ -919,7 +919,7 @@ class ExperimentalSkeletonTests(unittest.TestCase):
         target = benchmark.current_target
         self.assertIsNotNone(target)
         frame = HandControlFrame(
-            cursor_target=Point(target.x, target.y),
+            cursor_target=Point(state.width - target.x, target.y),
             click_fired=True,
             paused=False,
         )

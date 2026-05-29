@@ -100,9 +100,10 @@ def apply_hand_frame_to_benchmark(
     now_s: float,
 ):
     if not hand_frame.paused and hand_frame.cursor_target is not None:
-        state = set_simulated_cursor(
-            state, hand_frame.cursor_target.x, hand_frame.cursor_target.y
-        )
+        # Match the Real Mouse Runtime's webcam-style horizontal mirror so
+        # moving the hand right moves the simulated cursor right.
+        mirrored_x = state.width - hand_frame.cursor_target.x
+        state = set_simulated_cursor(state, mirrored_x, hand_frame.cursor_target.y)
     if not hand_frame.paused and hand_frame.click_fired:
         benchmark = register_click(benchmark, state.cursor.x, state.cursor.y, now_s)
     return state, benchmark
