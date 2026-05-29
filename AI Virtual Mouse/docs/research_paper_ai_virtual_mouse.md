@@ -159,6 +159,86 @@ This paper compared a tutorial-style AI Virtual Mouse baseline with an improved 
 
 The strongest supported conclusion is therefore limited and specific: the improved hand-control pipeline greatly reduced unintended clicks while preserving 100% target acquisition success in the controlled point-and-click benchmark. Future work should evaluate more participants, longer sessions, drag and scroll gestures, calibration effects, and statistically justified comparisons. A later study should also separate backend effects from gesture-pipeline effects and include a conventional physical mouse baseline only after the virtual-mouse benchmark protocol is stable.
 
+## Appendix A. Final Results and Reproducibility Artifacts
+
+This appendix records the benchmark configuration, session identifiers, and raw session-level metrics used in the descriptive analysis. The artifacts are retained in `outputs/sessions/`, with one folder per benchmark session containing `metadata.json`, `trials.csv`, `completion_times.svg`, and `report.md`.
+
+### A.1 Benchmark Configuration
+
+**Table A1. Reproducibility configuration for the point-and-click benchmark.**
+
+| Parameter | Value |
+|---|---|
+| Benchmark mode | Hand-input point-and-click benchmark |
+| Cursor safety model | Simulated Pygame cursor; operating-system mouse movement disabled |
+| Conditions | Baseline and improved |
+| Sessions per condition | 5 |
+| Targets per session | 20 |
+| Benchmark window | 960 x 640 px |
+| Target radius | 24 px |
+| Random seed | 20260527 |
+| Baseline gesture profile | Index-only movement; index-middle pinch click; no debounce |
+| Improved gesture profile | Index-only movement; stable index-middle pinch click; open-palm pause |
+| Baseline configured backend | mediapipe_solutions |
+| Improved configured backend | mediapipe_tasks |
+| Actual backend used in saved hand-input sessions | mediapipe_tasks |
+| Debounce settings | 2 stable frames, 2 release frames, 0.35 s cooldown |
+| Primary output directory | `outputs/sessions/` |
+
+The actual backend field is included because the saved hand-input sessions used MediaPipe Tasks for both conditions. Therefore, these results compare baseline and improved gesture-pipeline behavior in the benchmark environment and should not be interpreted as an isolated MediaPipe Solutions versus MediaPipe Tasks backend study.
+
+### A.2 Session Inventory
+
+**Table A2. Session metadata inventory.**
+
+| Session ID | Condition | Configured backend | Backend used | Gesture profile | Smoothing | Debounce | Calibration |
+|---|---|---|---|---|---|---:|---:|
+| 20260529T081649Z-e4795a8b | baseline | mediapipe_solutions | mediapipe_tasks | baseline | fixed | false | false |
+| 20260529T081804Z-66b99a2e | baseline | mediapipe_solutions | mediapipe_tasks | baseline | fixed | false | false |
+| 20260529T081926Z-d9a8080a | baseline | mediapipe_solutions | mediapipe_tasks | baseline | fixed | false | false |
+| 20260529T082028Z-81083703 | baseline | mediapipe_solutions | mediapipe_tasks | baseline | fixed | false | false |
+| 20260529T082130Z-efde07f7 | baseline | mediapipe_solutions | mediapipe_tasks | baseline | fixed | false | false |
+| 20260529T082245Z-16be5208 | improved | mediapipe_tasks | mediapipe_tasks | simple | adaptive | true | true |
+| 20260529T082343Z-64ce4063 | improved | mediapipe_tasks | mediapipe_tasks | simple | adaptive | true | true |
+| 20260529T082543Z-58d86a0c | improved | mediapipe_tasks | mediapipe_tasks | simple | adaptive | true | true |
+| 20260529T082652Z-51b683dd | improved | mediapipe_tasks | mediapipe_tasks | simple | adaptive | true | true |
+| 20260529T083035Z-9061f920 | improved | mediapipe_tasks | mediapipe_tasks | simple | adaptive | true | true |
+
+### A.3 Session-Level Metrics
+
+**Table A3. Raw session-level metrics used for analysis.**
+
+| Session ID | Hit rate | False clicks | Total clicks | Mean time (s) | Median time (s) | Hit jitter (px) | Path length (px) | Mean FPS | Movement jitter (px) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 20260529T081649Z-e4795a8b | 100.0% | 174 | 194 | 2.449 | 2.008 | 10.091 | 8700.54 | 34.4 | 7.139 |
+| 20260529T081804Z-66b99a2e | 100.0% | 193 | 213 | 3.430 | 2.550 | 12.826 | 10674.47 | 33.8 | 7.988 |
+| 20260529T081926Z-d9a8080a | 100.0% | 214 | 234 | 3.872 | 2.609 | 11.263 | 12116.95 | 34.5 | 7.280 |
+| 20260529T082028Z-81083703 | 100.0% | 185 | 205 | 2.878 | 2.209 | 9.323 | 9974.13 | 33.7 | 8.413 |
+| 20260529T082130Z-efde07f7 | 100.0% | 198 | 218 | 2.798 | 2.105 | 9.234 | 8851.59 | 33.7 | 7.126 |
+| 20260529T082245Z-16be5208 | 100.0% | 4 | 24 | 3.324 | 2.450 | 9.683 | 8811.14 | 33.7 | 8.823 |
+| 20260529T082343Z-64ce4063 | 100.0% | 5 | 25 | 2.641 | 2.201 | 10.972 | 8619.45 | 33.5 | 9.924 |
+| 20260529T082543Z-58d86a0c | 100.0% | 10 | 30 | 5.496 | 2.256 | 10.576 | 14311.83 | 36.0 | 12.976 |
+| 20260529T082652Z-51b683dd | 100.0% | 2 | 22 | 3.009 | 2.207 | 10.559 | 10180.34 | 36.2 | 11.938 |
+| 20260529T083035Z-9061f920 | 100.0% | 0 | 20 | 10.346 | 2.104 | 9.738 | 13656.41 | 43.6 | 13.320 |
+
+### A.4 Aggregate Metrics and Outlier Note
+
+**Table A4. Aggregate means across five sessions per condition.**
+
+| Metric | Baseline mean | Improved mean |
+|---|---:|---:|
+| Hit rate | 100.0% | 100.0% |
+| False clicks | 192.8 | 4.2 |
+| Total clicks | 212.8 | 24.2 |
+| Mean completion time (s) | 3.085 | 4.963 |
+| Median completion time (s) | 2.296 | 2.244 |
+| Hit-position jitter (px) | 10.548 | 10.306 |
+| Cursor path length (px) | 10063.54 | 11115.83 |
+| Mean FPS | 34.0 | 36.6 |
+| Movement jitter estimate (px) | 7.589 | 11.396 |
+
+The improved session `20260529T083035Z-9061f920` is retained in the analysis because no objective exclusion rule was defined before collection. Its mean completion time was 10.346 s due mainly to one 147.854 s trial, while its median completion time was 2.104 s. This explains why the improved condition had better click reliability but did not show faster mean completion time.
+
 ## References
 
 [@pan_yolo-ecn_2026] W. Pan, C. Liu, L. Quan, X. Du, Y. Song, J. Ning, and L. Chen, "YOLO-ECN: An efficient tea bud recognition model based on YOLOv10s," *Smart Agricultural Technology*, vol. 14, Art. no. 102048, 2026, doi: 10.1016/j.atech.2026.102048.

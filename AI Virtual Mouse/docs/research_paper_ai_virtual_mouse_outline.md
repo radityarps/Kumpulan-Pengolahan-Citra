@@ -123,3 +123,11 @@ Include:
 
 Conclude with the strongest supported claim. Future work should include more participants, longer sessions, drag and scroll evaluation, calibration study, and statistical testing.
 
+### 10. Appendix A. Final Results and Reproducibility Artifacts
+
+Add a final appendix before References with:
+
+- Benchmark configuration and safety model.
+- Session metadata inventory, including session IDs, condition, backend, gesture profile, smoothing, debounce, and calibration flags.
+- Raw session-level metrics, including hit rate, false clicks, total clicks, completion time, hit-position jitter, cursor path length, FPS, and movement jitter.
+- Aggregate means and a short note retaining the improved outlier session.
