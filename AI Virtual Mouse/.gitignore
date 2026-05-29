@@ -29,6 +29,9 @@ Thumbs.db
 # Downloaded runtime assets
 models/
 
+# Generated benchmark outputs
+outputs/
+
 # Local media captures
 *.mp4
 *.avi
