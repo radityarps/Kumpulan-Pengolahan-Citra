@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<style xmlns="http://purl.org/net/xbiblio/csl" version="1.0" class="in-text" default-locale="en-US">
+  <info>
+    <title>Elsevier-like Numeric for AI Virtual Mouse v2</title>
+    <id>https://local/elsevier_numeric_ai_virtual_mouse_v2</id>
+    <link href="https://local/elsevier_numeric_ai_virtual_mouse_v2" rel="self"/>
+    <author><name>Codex</name></author>
+    <updated>2026-06-03T00:00:00+00:00</updated>
+  </info>
+  <macro name="author">
+    <names variable="author">
+      <name initialize-with=". " delimiter=", " and="text"/>
+      <label form="short" prefix=", "/>
+      <substitute>
+        <names variable="editor"/>
+        <text variable="title"/>
+      </substitute>
+    </names>
+  </macro>
+  <macro name="title">
+    <choose>
+      <if type="article-journal paper-conference" match="any">
+        <text variable="title" quotes="true"/>
+      </if>
+      <else>
+        <text variable="title" font-style="italic"/>
+      </else>
+    </choose>
+  </macro>
+  <macro name="container">
+    <choose>
+      <if type="article-journal">
+        <text variable="container-title" font-style="italic"/>
+      </if>
+      <else-if type="paper-conference">
+        <text variable="container-title" prefix="in " font-style="italic"/>
+      </else-if>
+      <else>
+        <text variable="container-title" font-style="italic"/>
+      </else>
+    </choose>
+  </macro>
+  <macro name="issued">
+    <date variable="issued"><date-part name="year"/></date>
+  </macro>
+  <macro name="locators">
+    <group delimiter=", ">
+      <group delimiter=" ">
+        <label variable="volume" form="short"/>
+        <text variable="volume"/>
+      </group>
+      <group delimiter=" ">
+        <label variable="issue" form="short"/>
+        <text variable="issue"/>
+      </group>
+      <group delimiter=" ">
+        <label variable="page" form="short"/>
+        <text variable="page"/>
+      </group>
+    </group>
+  </macro>
+  <citation collapse="citation-number">
+    <sort><key variable="citation-number"/></sort>
+    <layout prefix="[" suffix="]" delimiter=", ">
+      <text variable="citation-number"/>
+    </layout>
+  </citation>
+  <bibliography second-field-align="flush" entry-spacing="0">
+    <layout suffix=".">
+      <text variable="citation-number" prefix="[" suffix="] "/>
+      <group delimiter=", ">
+        <text macro="author"/>
+        <text macro="title"/>
+        <text macro="container"/>
+        <text macro="locators"/>
+        <text macro="issued"/>
+        <text variable="DOI" prefix="doi: "/>
+        <text variable="URL"/>
+      </group>
+    </layout>
+  </bibliography>
+</style>

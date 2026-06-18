@@ -35,7 +35,12 @@ GESTURE_PROFILE_IMPROVED = "improved"
 
 @dataclass(frozen=True)
 class HandControlFrame:
-    """Per-frame output from the shared hand-control pipeline."""
+    """Output satu frame yang dipakai runtime dan benchmark.
+
+     cursor_target dan click_fired adalah output akhir pipeline. Runtime dapat
+    menggerakkan atau mengklik mouse, sedangkan benchmark hanya mencatat event
+    cursor simulasi.
+    """
 
     cursor_target: Point | None = None
     click_fired: bool = False
@@ -151,7 +156,11 @@ def check_safety(
 def hand_input_from_tracking(
     result: HandTrackingResult, config: GestureEngineConfig
 ) -> GestureInput:
-    """Convert raw tracking result to gesture-engine input."""
+    """Mengubah output tracker menjadi input gesture.
+
+    HandTracker mengembalikan fingers_up sebagai flag angka. GestureEngine
+    membutuhkan boolean jelas (thumb/index/middle/ring/pinky) dan jarak pinch.
+    """
     fingers = result.fingers_up or []
     if len(fingers) < 5:
         return GestureInput()
@@ -174,6 +183,9 @@ class HandControlPipeline:
     debounce, pause toggle, safety state, FPS calculation.
 
     Does NOT own: camera capture, rendering, or cursor side effects.
+
+    Class ini menjadi layer orkestrasi. Alurnya menghubungkan HandTracker ->
+    GestureEngine -> cursor mapping -> smoothing -> debounce.
     """
 
     def __init__(
@@ -249,6 +261,8 @@ class HandControlPipeline:
 
         Does NOT apply cursor side effects. The caller decides what to do
         with cursor_target and click_fired.
+
+        Frame kamera masuk, HandControlFrame keluar.
         """
         result = self._tracker.process(frame)
 
@@ -261,6 +275,7 @@ class HandControlPipeline:
         landmarks_image = frame
 
         if result.success:
+            # Hasil tracker menjadi input gesture; belum ada aksi mouse di sini.
             landmarks_image = self._tracker.draw_landmarks(frame, result)
             hand = hand_input_from_tracking(result, self._gesture_cfg)
             gesture = self._classify(hand)
@@ -275,6 +290,8 @@ class HandControlPipeline:
                 if gesture.cursor_enabled and result.landmarks:
                     prev_x, prev_y = self._previous_x, self._previous_y
                     index_tip = result.landmarks[8]
+                    # Landmark 8 (ujung telunjuk) dipetakan dari ruang kamera ke ruang
+                    # output/layar, lalu dihaluskan sebelum dibaca runtime.
                     target = map_point_to_output(
                         index_tip,
                         self._mapping_bounds,
@@ -297,6 +314,8 @@ class HandControlPipeline:
                 # Click debounce (conditional)
                 if gesture.click:
                     if self._debounce_enabled:
+                        # Gesture klik mentah harus melewati debounce sebelum dapat menjadi
+                        # click_fired=True.
                         debounce_res = update_click_debounce(
                             self._click_debounce,
                             True,

@@ -56,6 +56,12 @@ def build_real_mouse_metadata(
 
 
 def _create_mouse_controller() -> MouseController:
+    """Memilih backend yang dapat menggerakkan atau mengklik mouse OS.
+
+    AutoPy diprioritaskan. PyAutoGUI menjadi fallback agar runtime tetap dapat
+    berjalan pada environment yang tidak memiliki AutoPy.
+    """
+
     try:
         autopy = import_module("autopy")
         width, height = autopy.screen.size()
@@ -79,6 +85,12 @@ def _create_mouse_controller() -> MouseController:
 
 
 def run_real_mouse_runtime(config: ExperimentalConfig, plan: RuntimePlan) -> int:
+    """Loop webcam dan efek mouse nyata.
+
+    Fungsi ini membuka webcam, mengirim frame ke HandControlPipeline, lalu
+    menerapkan cursor_target/click_fired ke mouse OS.
+    """
+
     cv2 = import_module("cv2")
     mouse = _create_mouse_controller()
 
@@ -96,19 +108,22 @@ def run_real_mouse_runtime(config: ExperimentalConfig, plan: RuntimePlan) -> int
         use_simple_profile=True,
     )
 
+    # Runtime bertanggung jawab membuka dan membaca kamera.
     cap = cv2.VideoCapture(config.backend.camera_index)
     cap.set(3, config.backend.camera_width)
     cap.set(4, config.backend.camera_height)
 
     while True:
+        # Satu iterasi loop membaca satu frame kamera.
         success, image = cap.read()
         if not success:
             print("Camera frame could not be read.")
             break
 
+        # Pipeline mengubah frame -> keputusan gesture -> output cursor/click.
         frame_result: HandControlFrame = pipeline.process_frame(image)
 
-        # Apply real mouse effects
+        # Efek mouse nyata diterapkan hanya setelah pipeline menghasilkan output aman.
         if frame_result.cursor_target is not None and not frame_result.paused:
             screen_x = mouse.width - frame_result.cursor_target.x
             screen_y = frame_result.cursor_target.y
@@ -148,6 +163,7 @@ def run_real_mouse_runtime(config: ExperimentalConfig, plan: RuntimePlan) -> int
             )
 
         cv2.imshow("Real Mouse Runtime", display_image)
+        # Keluar aman dengan keyboard.
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 

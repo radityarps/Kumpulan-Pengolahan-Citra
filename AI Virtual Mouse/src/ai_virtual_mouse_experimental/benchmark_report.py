@@ -45,6 +45,12 @@ def load_metadata(path: Path) -> dict[str, Any]:
 def compute_metrics(
     rows: list[dict[str, str]], metadata: dict[str, Any] | None = None
 ) -> BenchmarkMetrics:
+    """Merangkum metrik benchmark.
+
+    Metrik ini membandingkan hit rate, false clicks, total clicks,
+    completion time, distance error, dan FPS antara baseline dan improved.
+    """
+
     benchmark = (metadata or {}).get("benchmark", {})
     expected_trials = int(benchmark.get("target_count") or len(rows))
     hit_rows = [row for row in rows if row.get("hit") == "True"]

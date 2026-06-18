@@ -1,10 +1,19 @@
+---
+bibliography: "zotero_ai_virtual_mouse_export_all.bib"
+csl: "elsevier_numeric_v2.csl"
+link-citations: true
+reference-section-title: "References"
+---
+
 # Comparison of Baseline and Improved AI Virtual Mouse Hand-Control Pipelines Using a Point-and-Click Benchmark
 
-## Abstract
+Raditya Rafif Pratama Sasmita*
 
-Vision-based virtual mouse systems provide a low-cost route for contactless human-computer interaction, but tutorial-style gesture implementations often suffer from unstable click behavior when used in repeated target-acquisition tasks. This study evaluates an AI Virtual Mouse prototype by comparing a baseline hand-control pipeline with an improved pipeline in a controlled point-and-click benchmark. The baseline condition follows tutorial-style gesture semantics: index-only movement and index-plus-middle-finger pinch clicking. The improved condition uses a shared hand-control pipeline with MediaPipe Tasks backend support, adaptive cursor smoothing, stable pinch click detection, click debouncing, optional calibration hooks, and an open-palm pause gesture. To avoid unintended desktop interaction during evaluation, the benchmark uses a simulated cursor inside a Pygame window and never moves the operating-system mouse. Five baseline and five improved hand-input sessions were analyzed. Both conditions achieved 100% target hit rate. However, the improved pipeline reduced average false clicks from 192.8 to 4.2 and reduced average total clicks from 212.8 to 24.2. Average hit-position jitter was similar between conditions, at 10.548 px for baseline and 10.306 px for improved. Mean completion time was not improved: the baseline averaged 3.085 s, while the improved condition averaged 4.963 s because one improved session contained a large outlier. These results support the limited claim that the improved hand-control pipeline greatly reduced unintended clicks while preserving 100% target acquisition success in the controlled benchmark.
+Politeknik Negeri Semarang, Semarang, Indonesia
 
-**Keywords:** AI virtual mouse; hand gesture recognition; MediaPipe Tasks; MediaPipe Solutions; point-and-click benchmark; cursor control; human-computer interaction.
+*Corresponding contributor: Raditya Rafif Pratama Sasmita.
+
+__ARTICLE_INFO_ABSTRACT_TABLE__
 
 ## 1. Introduction
 
@@ -21,7 +30,7 @@ The main contributions of this paper are as follows:
 - A descriptive analysis of five baseline and five improved hand-input benchmark sessions using hit rate, false clicks, total clicks, completion time, and hit-position jitter.
 - A conservative interpretation of the observed trade-off between click reliability and completion time.
 
-The structure of this paper follows the experimental style of Pan et al. [@pan_yolo-ecn_2026]: a background section introduces the technology and benchmark context, system design and methodology sections describe the implementation and evaluation, results are reported through tables and cautious interpretation, and the final sections discuss limitations and future work.
+The structure of this paper follows the experimental style of the reference study [@pan_yolo-ecn_2026]: a background section introduces the technology and benchmark context, system design and methodology sections describe the implementation and evaluation, results are reported through tables and cautious interpretation, and the final sections discuss limitations and future work.
 
 ## 2. Related Work / Background
 
@@ -238,28 +247,3 @@ The actual backend field is included because the saved hand-input sessions used 
 | Movement jitter estimate (px) | 7.589 | 11.396 |
 
 The improved session `20260529T083035Z-9061f920` is retained in the analysis because no objective exclusion rule was defined before collection. Its mean completion time was 10.346 s due mainly to one 147.854 s trial, while its median completion time was 2.104 s. This explains why the improved condition had better click reliability but did not show faster mean completion time.
-
-## References
-
-[@pan_yolo-ecn_2026] W. Pan, C. Liu, L. Quan, X. Du, Y. Song, J. Ning, and L. Chen, "YOLO-ECN: An efficient tea bud recognition model based on YOLOv10s," *Smart Agricultural Technology*, vol. 14, Art. no. 102048, 2026, doi: 10.1016/j.atech.2026.102048.
-
-[@lugaresi_mediapipe_2019] C. Lugaresi et al., "MediaPipe: A Framework for Building Perception Pipelines," arXiv:1906.08172, 2019.
-
-[@zhang_mediapipe_2020] F. Zhang, V. Bazarevsky, A. Vakunov, A. Tkachenka, G. Sung, C.-L. Chang, and M. Grundmann, "MediaPipe Hands: On-device Real-time Hand Tracking," arXiv:2006.10214, 2020.
-
-[@google_ai_edge_hand_2026] Google AI Edge, "Hand landmarks detection guide," MediaPipe Solutions, last updated Apr. 21, 2026. [Online]. Available: https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker
-
-[@fitts_information_1954] P. M. Fitts, "The information capacity of the human motor system in controlling the amplitude of movement," *Journal of Experimental Psychology*, vol. 47, no. 6, pp. 381-391, 1954, doi: 10.1037/h0055392.
-
-[@mackenzie_fitts_1992] I. S. MacKenzie, "Fitts' law as a research and design tool in human-computer interaction," *Human-Computer Interaction*, vol. 7, no. 1, pp. 91-139, 1992, doi: 10.1207/s15327051hci0701_3.
-
-[@international_organization_for_standardization_isots_2012] ISO, "ISO/TS 9241-411:2012 Ergonomics of human-system interaction - Part 411: Evaluation methods for the design of physical input devices," International Organization for Standardization, 2012.
-
-[@bradski_opencv_2000] G. Bradski, "The OpenCV Library," *Dr. Dobb's Journal of Software Tools*, 2000.
-
-[@uboweja_-device_2023] E. Uboweja, D. Tian, Q. Wang, Y.-C. Kuo, J. Zou, L. Wang, G. Sung, and M. Grundmann, "On-Device Real-Time Custom Hand Gesture Recognition," in *Proc. IEEE/CVF International Conference on Computer Vision Workshops*, 2023, pp. 4273-4277.
-
-[@tran_real-time_2021] D.-S. Tran, N.-H. Ho, H.-J. Yang, S.-H. Kim, and G. S. Lee, "Real-time virtual mouse system using RGB-D images and fingertip detection," *Multimedia Tools and Applications*, vol. 80, pp. 10473-10490, 2021, doi: 10.1007/s11042-020-10156-5.
-
-[@pygame_developers_pygame_2026] pygame developers, "pygame documentation," 2026. [Online]. Available: https://www.pygame.org/docs/
-

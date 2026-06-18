@@ -12,15 +12,13 @@ Catatan penggunaan:
 
 ## Slide 1 - AI Virtual Mouse: Dari Webcam ke Cursor
 
-Selamat pagi/siang, perkenalkan saya Raditya Rafif Pratama Sasmita dari Politeknik Negeri Semarang. Pada sesi ini saya akan menjelaskan proyek AI Virtual Mouse dari sudut pandang teknis, tetapi tetap dengan gaya peer tutoring.
+Selamat siang, perkenalkan saya Raditya Rafif Pratama Sasmita dari Politeknik Negeri Semarang. Pada sesi ini saya akan menjelaskan proyek AI Virtual Mouse dari sudut pandang teknis, tetapi tetap dengan gaya peer tutoring.
 
 Fokusnya bukan hanya memperlihatkan demo cursor bergerak dengan tangan, tetapi membedah bagaimana alurnya bekerja: mulai dari kamera, deteksi landmark tangan, pembacaan gesture, sampai sistem memutuskan kapan cursor bergerak dan kapan klik terjadi.
 
-Pesan utama dari proyek ini adalah: improved pipeline berhasil mengurangi klik tidak disengaja secara besar, tetapi tidak saya klaim sebagai pengganti penuh mouse fisik.
-
 ## Slide 2 - Tujuan Belajar
 
-Ada beberapa hal yang ingin saya capai dalam sesi ini. Pertama, kita samakan dulu pemahaman tentang OpenCV dan MediaPipe, karena dua library ini punya peran yang berbeda.
+Beberapa hal yang ingin saya capai dalam sesi ini. Pertama, kita samakan dulu pemahaman tentang OpenCV dan MediaPipe, karena dua library ini punya peran yang berbeda.
 
 Kedua, kita akan lihat alur sistem dari frame kamera sampai menjadi target cursor dan event klik. Ketiga, kita bandingkan baseline tutorial-style dengan improved pipeline.
 
@@ -32,13 +30,19 @@ OpenCV di proyek ini berperan sebagai lapisan computer vision untuk membaca webc
 
 MediaPipe berbeda perannya. MediaPipe dipakai untuk memahami posisi tangan. Output pentingnya adalah hand landmarks, yaitu titik-titik koordinat pada tangan. Dalam proyek ini, landmark seperti ujung jari telunjuk dan ujung jari tengah sangat penting untuk menentukan gerakan dan klik.
 
-Jadi pembagian sederhananya: OpenCV menangani camera frame dan visualisasi, sedangkan MediaPipe menangani deteksi struktur tangan.
-
 Tunjukkan bila perlu:
 - `src/ai_virtual_mouse_experimental/hand_tracker.py`
 - `src/video version/AiVirtualMouseProject.py`
 
 ## Slide 4 - MediaPipe Solutions dan Tasks
+
+**Kode yang ditunjukkan di awal narasi:**
+
+| File path | Kode/Fungsi | Fokus |
+|---|---|---|
+| `src/ai_virtual_mouse_experimental/hand_tracker.py` | `class HandTracker`, `class HandTrackingResult`, `_setup_backend` | MediaPipe Tasks prioritas, Solutions fallback, output tracking. |
+| `src/video version/HandTrackingModule.py` | `class handDetector`, `findHands`, `findPosition`, `fingersUp`, `findDistance` | Pembanding baseline tracker. |
+
 
 Pada baseline tutorial awal, pendekatannya mengikuti gaya MediaPipe Solutions. API ini populer karena mudah dipakai untuk prototype cepat. Kita bisa menggunakan `mp.solutions.hands.Hands`, membaca landmark, lalu langsung membuat logika gesture.
 
@@ -55,6 +59,14 @@ Tunjukkan:
 
 ## Slide 5 - Alur Sistem dari Kamera ke Cursor
 
+**Kode yang ditunjukkan di awal narasi:**
+
+| File path | Kode/Fungsi | Fokus |
+|---|---|---|
+| `src/ai_virtual_mouse_experimental/real_mouse_runtime.py` | `run_real_mouse_runtime`, `cv2.VideoCapture(...)`, `cap.read()` | Webcam dibuka dan frame dibaca. |
+| `src/ai_virtual_mouse_experimental/real_mouse_runtime.py` | `pipeline.process_frame(image)`, `mouse.move(...)`, `mouse.click()` | Frame masuk pipeline sebelum jadi mouse action. |
+
+
 Alur sistemnya bisa dibaca sebagai pipeline. Pertama, webcam membaca frame menggunakan OpenCV. Kedua, frame itu masuk ke HandTracker untuk mendeteksi 21 landmark tangan.
 
 Ketiga, landmark diterjemahkan menjadi gesture, misalnya move, click, pause, atau idle. Keempat, posisi ujung telunjuk dipetakan dari koordinat kamera ke koordinat output, bisa layar asli atau window benchmark.
@@ -67,6 +79,14 @@ Tunjukkan:
 
 ## Slide 6 - Model Gesture yang Dipakai
 
+**Kode yang ditunjukkan di awal narasi:**
+
+| File path | Kode/Fungsi | Fokus |
+|---|---|---|
+| `src/ai_virtual_mouse_experimental/gesture_engine.py` | `GestureInput`, `GestureResult`, `classify_simple_real_mouse_gesture`, `is_pinching` | Model gesture: pause, move, click, idle. |
+| `src/ai_virtual_mouse_experimental/hand_control_pipeline.py` | `hand_input_from_tracking` | `fingers_up` dari tracker diubah menjadi `GestureInput`. |
+
+
 Gesture utama yang dipakai sederhana. Untuk move, hanya jari telunjuk yang aktif. Untuk click, baseline memakai kombinasi telunjuk dan jari tengah, lalu mengecek jarak antar ujung jari.
 
 Pada improved version, click tidak langsung dieksekusi hanya karena jarak pinch kecil. Pinch harus stabil dulu, lalu melewati debounce. Setelah satu klik keluar, sistem menunggu release sebelum boleh klik lagi.
@@ -74,6 +94,14 @@ Pada improved version, click tidak langsung dieksekusi hanya karena jarak pinch 
 Ada juga pause gesture menggunakan telapak terbuka. Ini penting karena ketika sistem mengendalikan cursor, pengguna perlu cara cepat untuk menghentikan kontrol sementara.
 
 ## Slide 7 - Prototype Baseline
+
+**Kode yang ditunjukkan di awal narasi:**
+
+| File path | Kode/Fungsi | Fokus |
+|---|---|---|
+| `src/video version/AiVirtualMouseProject.py` | import `time`, `autopy`, `cv2`, `HandTrackingModule`, `numpy` | Dependency baseline asli. |
+| `src/video version/AiVirtualMouseProject.py` | `cv2.VideoCapture(0)`, `detector = htm.handDetector(maxHands=1)`, `autopy.screen.size()`, `while True`, `cap.read()` | Kamera, detector, layar, dan loop baseline ada dalam satu file. |
+
 
 Baseline adalah versi tutorial-style. Kodenya relatif langsung: baca kamera, deteksi tangan, cek jari mana yang aktif, lalu gerakkan mouse atau klik.
 
@@ -87,6 +115,15 @@ Tunjukkan:
 
 ## Slide 8 - Masalah Kode pada Baseline
 
+**Kode yang ditunjukkan di awal narasi:**
+
+| File path | Kode/Fungsi | Fokus |
+|---|---|---|
+| `src/video version/AiVirtualMouseProject.py` | `np.interp`, `clocX`, `clocY`, `autopy.mouse.move(...)` | Mapping cursor baseline. |
+| `src/video version/AiVirtualMouseProject.py` | `if fingers[1] == 1 and fingers[2] == 1`, `findDistance(8, 12, img)`, `if length < 40: autopy.mouse.click()` | Kode bermasalah: click langsung tanpa debounce/cooldown. |
+| `src/video version/HandTrackingModule.py` | `findDistance` | Helper jarak dua landmark. |
+
+
 Masalah utama baseline ada pada cara event klik dibuat. Kode click berada langsung di dalam loop frame. Jika jarak pinch kurang dari 40, sistem langsung memanggil `autopy.mouse.click()`.
 
 Karena kamera berjalan banyak frame per detik, satu pinch yang ditahan bisa memenuhi kondisi itu di banyak frame berturut-turut. Akibatnya satu niat klik bisa berubah menjadi banyak click event.
@@ -97,6 +134,14 @@ Tunjukkan:
 - `src/video version/AiVirtualMouseProject.py`, sekitar baris 64-71
 
 ## Slide 9 - Improved Pipeline: Apa yang Diubah
+
+**Kode yang ditunjukkan di awal narasi:**
+
+| File path | Kode/Fungsi | Fokus |
+|---|---|---|
+| `src/ai_virtual_mouse_experimental/hand_control_pipeline.py` | `class HandControlPipeline`, `class HandControlFrame` | Pipeline per frame dan output `cursor_target`, `click_fired`, `paused`. |
+| `src/ai_virtual_mouse_experimental/gesture_engine.py` | `classify_simple_real_mouse_gesture`, `update_click_debounce` | Gesture eksplisit dan click harus valid dulu. |
+
 
 Improved version memperbaiki proyek bukan hanya dengan mengganti backend, tetapi dengan merapikan arsitektur kontrol.
 
@@ -110,6 +155,17 @@ Tunjukkan:
 - `src/ai_virtual_mouse_experimental/gesture_engine.py`
 
 ## Slide 10 - Arsitektur Kode
+
+**Kode yang ditunjukkan di awal narasi:**
+
+| Layer | File path | Kode/Fungsi |
+|---|---|---|
+| Runtime | `src/ai_virtual_mouse_experimental/real_mouse_runtime.py` | `run_real_mouse_runtime`, `_create_mouse_controller` |
+| Tracking | `src/ai_virtual_mouse_experimental/hand_tracker.py` | `HandTracker`, `HandTrackingResult` |
+| Gesture | `src/ai_virtual_mouse_experimental/gesture_engine.py` | `GestureInput`, `GestureResult`, `classify_simple_real_mouse_gesture` |
+| Pipeline | `src/ai_virtual_mouse_experimental/hand_control_pipeline.py` | `HandControlPipeline`, `HandControlFrame` |
+| Mapping | `src/ai_virtual_mouse_experimental/cursor_mapping.py` | `map_point_to_output`, `apply_smoothing` |
+
 
 Ada beberapa file utama yang bisa dipakai untuk memahami arsitektur improved version.
 
@@ -125,6 +181,14 @@ Kalau audiens ingin membaca kode, lima file ini adalah peta utamanya.
 
 ## Slide 11 - Logika Debounce
 
+**Kode yang ditunjukkan di awal narasi:**
+
+| File path | Kode/Fungsi | Fokus |
+|---|---|---|
+| `src/ai_virtual_mouse_experimental/gesture_engine.py` | `ClickDebounceConfig`, `ClickDebounceState`, `ClickDebounceResult` | Konfigurasi, state, dan output debounce. |
+| `src/ai_virtual_mouse_experimental/gesture_engine.py` | `update_click_debounce`, `stable`, `cooldown_elapsed`, `armed`, `released_frames` | Click hanya keluar jika stabil, armed, cooldown lewat, dan perlu release. |
+
+
 Debounce adalah bagian penting dari improved version. Pada baseline, click bersifat frame-based: selama kondisi click benar di frame saat itu, klik bisa keluar.
 
 Pada improved version, sistem menyimpan state. Pertama, pinch harus aktif selama sejumlah frame, misalnya dua frame. Kedua, sistem harus dalam keadaan armed. Ketiga, cooldown harus sudah lewat.
@@ -139,6 +203,15 @@ Tunjukkan:
 - `update_click_debounce`
 
 ## Slide 12 - Keamanan pada Konteks Runtime
+
+**Kode yang ditunjukkan di awal narasi:**
+
+| File path | Kode/Fungsi | Fokus |
+|---|---|---|
+| `src/ai_virtual_mouse_experimental/real_mouse_runtime.py` | `run_real_mouse_runtime`, `_create_mouse_controller`, `autopy.mouse.move`, `autopy.mouse.click` | Runtime menyentuh mouse OS sungguhan. |
+| `src/ai_virtual_mouse_experimental/real_mouse_runtime.py` | `not frame_result.paused`, `if frame_result.click_fired`, `cv2.waitKey(1)`, `ord("q")` | Safety: pause, click final, safe quit. |
+| `src/ai_virtual_mouse_experimental/gesture_engine.py` | `is_open_palm`, `_pause_result` | Open palm sebagai pause gesture. |
+
 
 Proyek ini punya dua konteks runtime yang harus dibedakan.
 
@@ -169,6 +242,22 @@ Tunjukkan:
 
 ## Slide 14 - Hasil dan Klaim
 
+**Kode dan docs benchmark yang ditunjukkan di awal narasi:**
+
+| File path | Kode/Dokumen | Fokus |
+|---|---|---|
+| `src/ai_virtual_mouse_experimental/benchmark_shell.py` | mode benchmark, compare sessions | Entry point benchmark baseline vs improved. |
+| `src/ai_virtual_mouse_experimental/benchmark_grid.py` | `generate_grid_targets(settings)`, `register_click` | Target grid, hit, false click. |
+| `src/ai_virtual_mouse_experimental/benchmark_report.py` | `compute_metrics` | Hit rate, false clicks, total clicks. |
+| `docs/Presentation/presentation_demo_code_ai_virtual_mouse.md` | bagian perbandingan benchmark baseline vs improved | Bukti angka hasil benchmark. |
+
+| Metrik | Baseline | Improved |
+|---|---:|---:|
+| Hit rate | `100%` | `100%` |
+| False clicks | `192,8` | `4,2` |
+| Total clicks | `212,8` | `24,2` |
+
+
 Eksperimen membandingkan lima sesi baseline hand-input dan lima sesi improved hand-input. Keduanya mencapai hit rate 100 persen, artinya kedua kondisi sama-sama bisa menyelesaikan target.
 
 Perbedaan paling besar ada pada klik tidak disengaja. Baseline rata-rata menghasilkan 192.8 false clicks, sedangkan improved rata-rata hanya 4.2 false clicks.
@@ -194,4 +283,3 @@ Untuk pengembangan berikutnya, proyek ini bisa diperluas dengan lebih banyak par
 Terima kasih. Jika ada pertanyaan, saya bisa menunjukkan tiga bagian kode utama: bug klik pada baseline, logika debounce pada improved version, atau cara benchmark menghitung hit dan false click.
 
 Saya juga bisa menjalankan demo singkat untuk menunjukkan perbedaan antara cara berpikir baseline dan improved pipeline.
-

@@ -83,6 +83,8 @@ def calibrate_bounds(
 def map_point_to_output(
     point: Point, source: Bounds, output_width: int, output_height: int
 ) -> Point:
+    """Memetakan titik dari ruang kamera ke ruang output atau layar."""
+
     source.validate()
     clamped_x = min(max(point.x, source.left), source.right)
     clamped_y = min(max(point.y, source.top), source.bottom)
@@ -132,6 +134,8 @@ def apply_smoothing(
     target: Point,
     config: SmoothingConfig | None = None,
 ) -> Point:
+    """Menghaluskan target cursor sebelum runtime menggerakkan mouse."""
+
     if strategy == "adaptive":
         return adaptive_smooth(previous, target, config)
     if strategy == "fixed":

@@ -10,7 +10,12 @@ GestureName = Literal["idle", "move", "click", "drag", "scroll", "pause"]
 
 @dataclass(frozen=True)
 class GestureInput:
-    """Synthetic/testable hand state independent from camera and mouse effects."""
+    """State tangan yang sudah dinormalisasi dari tracker.
+
+    Objek ini menjadi penghubung antara tracking dan logika gesture: landmark
+    kamera sudah diringkas menjadi boolean jari dan jarak pinch, sehingga aturan
+    gesture dapat diuji tanpa webcam atau efek mouse sistem operasi.
+    """
 
     thumb: bool = False
     index: bool = False
@@ -24,6 +29,10 @@ class GestureInput:
 
 @dataclass(frozen=True)
 class GestureResult:
+    """Keputusan yang dihasilkan oleh aturan gesture.
+
+    Runtime membaca flag ini setelahnya; class ini tidak menggerakkan atau mengklik mouse.
+    """
     name: GestureName
     reason: str
     cursor_enabled: bool = False
@@ -45,6 +54,8 @@ class GestureEngineConfig:
 
 @dataclass(frozen=True)
 class ClickDebounceConfig:
+    """Threshold debounce untuk menyaring gesture klik yang tidak stabil."""
+
     stable_frames_required: int = 2
     release_frames_required: int = 2
     cooldown_seconds: float = 0.35
@@ -52,6 +63,8 @@ class ClickDebounceConfig:
 
 @dataclass(frozen=True)
 class ClickDebounceState:
+    """State untuk mencegah satu pinch menghasilkan klik berulang."""
+
     pressed_frames: int = 0
     released_frames: int = 0
     armed: bool = True
@@ -60,6 +73,8 @@ class ClickDebounceState:
 
 @dataclass(frozen=True)
 class ClickDebounceResult:
+    """Gerbang akhir klik; hanya emit_click yang memicu klik mouse OS."""
+
     state: ClickDebounceState
     emit_click: bool
     reason: str
@@ -114,6 +129,12 @@ def classify_simple_real_mouse_gesture(
 
     Drag and scroll are intentionally excluded from the first real mouse runtime to
     reduce false positives while controlling the OS cursor.
+
+    Aturan gesture:
+    - open palm => pause
+    - index only => cursor movement
+    - index + middle + pinch => click candidate
+    - anything else => idle
     """
     cfg = config or GestureEngineConfig()
 
@@ -166,6 +187,8 @@ def is_open_palm(hand: GestureInput) -> bool:
 
 
 def is_pinching(hand: GestureInput, config: GestureEngineConfig) -> bool:
+    """Pinch berarti jarak landmark berada di bawah threshold."""
+
     return (
         hand.pinch_distance_px is not None
         and hand.pinch_distance_px < config.click_threshold_px
@@ -178,15 +201,24 @@ def update_click_debounce(
     now_s: float,
     config: ClickDebounceConfig | None = None,
 ) -> ClickDebounceResult:
+    """Mengubah gesture klik mentah menjadi event klik yang stabil.
+
+    Baseline langsung klik saat jarak pinch berada di bawah threshold.
+    Runtime improved membutuhkan frame stabil, state armed, dan cooldown sebelum
+    mengembalikan emit_click=True.
+    """
     cfg = config or ClickDebounceConfig()
 
     if raw_click_active:
+        # Hitung frame berurutan saat pinch aktif; satu frame noise belum cukup
+        # untuk menghasilkan klik.
         next_state = ClickDebounceState(
             pressed_frames=state.pressed_frames + 1,
             released_frames=0,
             armed=state.armed,
             last_click_time_s=state.last_click_time_s,
         )
+        # Tiga gerbang harus lolos sebelum klik menjadi aksi mouse nyata.
         cooldown_elapsed = now_s - state.last_click_time_s >= cfg.cooldown_seconds
         stable = next_state.pressed_frames >= cfg.stable_frames_required
         if next_state.armed and stable and cooldown_elapsed:
@@ -202,6 +234,7 @@ def update_click_debounce(
             )
         return ClickDebounceResult(next_state, False, "click_not_ready")
 
+    # Frame release mengaktifkan ulang sistem agar pinch yang ditahan tidak berulang.
     released_frames = state.released_frames + 1
     armed = state.armed or released_frames >= cfg.release_frames_required
     return ClickDebounceResult(

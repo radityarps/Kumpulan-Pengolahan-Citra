@@ -56,6 +56,12 @@ class PointClickBenchmarkState:
 
 
 def generate_grid_targets(settings: BenchmarkSettings) -> tuple[Target, ...]:
+    """Membuat grid target benchmark yang dapat diulang.
+
+    Pengaturan dan random_seed yang sama membuat baseline dan improved memakai
+    urutan target yang sebanding.
+    """
+
     rng = random.Random(settings.random_seed)
     margin = settings.target_radius * 2
     columns = 4
@@ -106,6 +112,13 @@ def register_click(
     click_y: float,
     now_s: float,
 ) -> PointClickBenchmarkState:
+    """Mengklasifikasikan klik simulasi sebagai hit atau false click.
+
+    Benchmark tidak menekan mouse sistem operasi. Klik dihitung hit jika posisi
+    klik berada di dalam radius target; selain itu false_clicks_current_trial
+    ditambah.
+    """
+
     target = state.current_target
     if target is None:
         return state

@@ -10,6 +10,11 @@ A presentation focused on the AI Virtual Mouse prototype as an application proje
 
 A presentation format where the presenter acts as a technical peer tutor or guest speaker. The flow teaches how the AI Virtual Mouse works, connects concepts to concrete project code, demonstrates gesture behavior, and uses benchmark results only as supporting evidence.
 
+### Video Tutorial
+
+A step-by-step recorded explanation format that assumes the environment is already prepared, uses the Improved Condition as the main demo, briefly uses the Baseline Condition as contrast, then teaches viewers how to run the demo, understand the gesture behavior, and follow the main webcam-to-cursor code flow at a slower pace than a live class presentation.
+_Avoid_: Project Presentation, Pitch Video, Installation Tutorial
+
 ### Peer Tutoring Technical Depth
 
 The peer tutoring presentation is medium-to-deep technical: code-aware, architecture-aware, and method-aware. It should mention key files and simple logic slices for hand tracking, gesture classification, the shared hand-control pipeline, debounce, benchmark safety, and metric interpretation, without becoming a full source-code walkthrough.
@@ -21,6 +26,22 @@ The target audience for the project presentation is a university classroom or le
 ### Presentation Duration
 
 The target duration is 10-14 minutes, with approximately 14 slides when a deeper technical peer tutoring explanation is requested.
+
+### Video Tutorial Duration
+
+The target duration for the Video Tutorial is 8-10 minutes, prioritizing a fast run-through of the improved demo, gesture behavior, and main code flow over full setup or deep source-code walkthrough.
+
+### Video Tutorial Production Package
+
+The expected Video Tutorial deliverable is a full production package containing timed narration, shot list, run commands, screen-recording cues, and a pre-recording checklist.
+
+### Video Tutorial Recording Layout
+
+The Video Tutorial uses screen recording as the main view, with a small presenter webcam overlay during opening and closing while keeping the AI Virtual Mouse camera/demo window visually clear during technical demonstration.
+
+### Video Tutorial Presenter Identity
+
+The Video Tutorial opening uses the presenter name Raditya rather than the full formal name.
 
 ### Presentation Main Message
 
@@ -37,6 +58,10 @@ The peer tutoring presentation uses 14 slides for deeper technical delivery: ope
 ### Presentation Language
 
 The presentation language is Indonesian, with English technical terms when they are clearer or standard in the project, such as baseline, improved pipeline, gesture engine, debounce, and benchmark.
+
+### Video Tutorial Narration Style
+
+The Video Tutorial uses semi-formal Indonesian narration suitable for a university assignment: clear, polite, natural, and technical without sounding like a full academic paper.
 
 ### Presentation Visual Style
 

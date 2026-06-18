@@ -14,6 +14,11 @@ from .tasks_backend import resolve_model_path
 
 @dataclass(frozen=True)
 class HandTrackingResult:
+    """Hasil normalisasi dari deteksi tangan MediaPipe.
+
+    Output tracker masih berupa data tangan, bukan aksi mouse.
+    """
+
     landmarks: list[Point] | None = None
     fingers_up: list[int] | None = None
     pinch_distance_px: float | None = None
@@ -24,7 +29,11 @@ class HandTrackingResult:
 
 
 class HandTracker:
-    """Unified hand tracker: Tasks primary, Solutions fallback."""
+    """Unified hand tracker: Tasks primary, Solutions fallback.
+
+    Tracker improved menyembunyikan detail backend MediaPipe dari runtime dan
+    pipeline. Runtime hanya menerima HandTrackingResult.
+    """
 
     def __init__(
         self,
@@ -41,6 +50,8 @@ class HandTracker:
         self._setup_backend()
 
     def _setup_backend(self) -> None:
+        """Mencoba MediaPipe Tasks, lalu fallback ke Solutions."""
+
         if self.prefer_tasks:
             try:
                 self._setup_tasks_backend()
@@ -98,6 +109,8 @@ class HandTracker:
         print("[INFO] MediaPipe Solutions backend initialized")
 
     def process(self, frame: np.ndarray) -> HandTrackingResult:
+        """Mengarahkan satu frame ke backend MediaPipe yang aktif."""
+
         if self._backend_used == "mediapipe_tasks":
             return self._process_tasks(frame)
         return self._process_solutions(frame)
