@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Pelajaran 0001 — Citra Itu Sebenarnya Apa?</title>
+<style>
+  :root {
+    --ink: #222;
+    --accent: #b04a2f;
+    --muted: #777;
+    --bg: #fbfaf6;
+    --rule: #e5e1d6;
+    --code-bg: #f3f0e6;
+  }
+  html, body { background: var(--bg); color: var(--ink); }
+  body {
+    font-family: "Iowan Old Style", "Charter", "Georgia", serif;
+    max-width: 38rem;
+    margin: 3rem auto;
+    padding: 0 1.5rem;
+    line-height: 1.65;
+    font-size: 1.05rem;
+  }
+  h1 { font-size: 1.8rem; margin-bottom: 0.2rem; color: var(--accent); }
+  h2 { font-size: 1.25rem; margin-top: 2.2rem; border-bottom: 1px solid var(--rule); padding-bottom: 0.3rem; }
+  h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+  .subtitle { color: var(--muted); font-style: italic; margin-top: 0; }
+  .meta { color: var(--muted); font-size: 0.9rem; }
+  hr { border: 0; border-top: 1px solid var(--rule); margin: 2rem 0; }
+  pre, code { font-family: "JetBrains Mono", "SF Mono", "Consolas", monospace; font-size: 0.9rem; }
+  pre { background: var(--code-bg); padding: 0.9rem 1rem; border-left: 3px solid var(--accent); overflow-x: auto; }
+  code { background: var(--code-bg); padding: 0 0.25rem; border-radius: 2px; }
+  blockquote { border-left: 3px solid var(--rule); margin: 1rem 0; padding: 0.2rem 1rem; color: var(--muted); font-style: italic; }
+  .callout { background: #fdf6e3; border-left: 3px solid #d4a017; padding: 0.8rem 1rem; margin: 1.2rem 0; }
+  .quiz { background: #f5f0ea; padding: 1rem 1.2rem; border-left: 3px solid var(--accent); margin: 1.5rem 0; }
+  .quiz h3 { margin-top: 0; }
+  .quiz ol { margin: 0.5rem 0 0.5rem 1.2rem; }
+  .quiz li { margin-bottom: 0.5rem; }
+  details { margin-top: 0.5rem; }
+  summary { cursor: pointer; color: var(--accent); font-weight: bold; }
+  .ascii-art { font-family: monospace; white-space: pre; line-height: 1.2; font-size: 0.85rem; color: var(--ink); }
+  table { border-collapse: collapse; margin: 1rem 0; }
+  td, th { border: 1px solid var(--rule); padding: 0.4rem 0.8rem; text-align: center; }
+  th { background: var(--code-bg); }
+  a { color: var(--accent); }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--rule); color: var(--muted); font-size: 0.9rem; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<h1>Pelajaran 0001</h1>
+<p class="subtitle">Citra itu sebenarnya apa? (Spoiler: cuma tabel angka.)</p>
+<p class="meta">Waktu baca: ±8 menit &nbsp;·&nbsp; Tied to: AI Virtual Mouse · modul <code>hand_tracker.py</code></p>
+
+<hr>
+
+<h2>1. Klaim utama pelajaran ini</h2>
+<p>Kalau ada satu hal yang harus kamu bisa jelaskan ke temanmu pakai kata-katamu sendiri, itu begini:</p>
+
+<blockquote>
+Sebuah <b>citra digital (gambar)</b> adalah sebuah <b>tabel dua dimensi berisi angka</b>, di mana setiap angka mewakili <b>tingkat kecerahan atau warna</b> di satu titik kecil yang disebut <b>piksel</b> (pixel = <i>picture element</i>).
+</blockquote>
+
+<p>Itu saja. Hampir semua hal di <i>image processing</i> — filter, threshold, edge detection, bahkan <i>hand tracking</i> — pada akhirnya adalah <b>operasi matematika pada tabel angka ini</b>. Kalau kamu paham ini, sisanya tinggal variasi.</p>
+
+<h2>2. Visualisasi: citra grayscale 4×4</h2>
+<p>Bayangkan citra grayscale (hitam-putih) terkecil yang masuk akal: 4×4 piksel. Tiap angka adalah 0 (hitam total) sampai 255 (putih total):</p>
+
+<pre class="ascii-art">
+200  50  50  200
+ 50  50  50   50
+ 50  50  50   50
+200  50  50  200
+</pre>
+
+<p>Kalau kamu gambar angka-angka itu sebagai kotak kecil (angka besar = putih, angka kecil = hitam), kamu dapat bentuk <b>donat</b>. Titik. Itu citra. Tidak lebih.</p>
+
+<p>Citra berwarna (RGB) pada dasarnya tiga tabel ditumpuk: satu untuk <i>Red</i>, satu untuk <i>Green</i>, satu untuk <i>Blue</i>. Tiap titik punya tiga angka, mis. <code>(255, 0, 0)</code> = merah murni.</p>
+
+<h2>3. Ukuran citra &amp; konsep "channel"</h2>
+<p>Citra webcam biasanya 640×480 piksel. Berarti ada:</p>
+<ul>
+  <li><b>640 × 480 = 307.200 piksel</b> untuk grayscale</li>
+  <li><b>307.200 × 3 = 921.600 angka</b> untuk RGB (3 channel)</li>
+</ul>
+
+<p>OpenCV (library yang dipakai project ini) menyimpan citra sebagai <b>NumPy array</b>: sebuah <i>tensor</i> 3-dimensi dengan bentuk <code>(height, width, channels)</code>.</p>
+
+<pre><code>import cv2
+img = cv2.imread("foto.jpg")
+print(img.shape)
+# (480, 640, 3)   ← tinggi, lebar, channel
+print(img[100, 200])
+# [187 144  93]  ← piksel baris-100 kolom-200, channel BGR
+</code></pre>
+
+<p class="meta">Catatan: OpenCV baca warna dalam urutan <b>BGR</b>, bukan RGB. Ini jebakan klasik. Hapal: <i>"OpenCV terbalik."</i></p>
+
+<h2>4. Kenapa ini penting untuk AI Virtual Mouse?</h2>
+<p>Project ini memproses <b>frame demi frame</b> dari webcam. Tiap frame adalah tabel angka seperti di atas. Alur besarnya:</p>
+
+<ol>
+  <li>Webcam nangkap frame → tabel angka (shape <code>(H, W, 3)</code>)</li>
+  <li>MediaPipe Hand Landmarker deteksi 21 titik tangan → koordinat (x, y) di tabel itu</li>
+  <li>Modul <code>gesture_engine.py</code> baca jarak antar-titik → "ini lagi pinch / open palm / etc."</li>
+  <li>Modul <code>cursor_mapping.py</code> petakan koordinat tangan ke koordinat layar</li>
+  <li>Sistem operasi gerakin kursor</li>
+</ol>
+
+<p>Setiap langkah di atas <b>memakan tabel angka dan menghasilkan tabel angka (atau keputusan)</b>. Tidak ada sihir. Langkah 1 sudah kamu pahami sekarang.</p>
+
+<h2>5. Latihan (coba sendiri, baru lihat jawaban)</h2>
+
+<div class="quiz">
+<h3>🧠 Quiz: 5 pertanyaan, jawab dari ingatan</h3>
+<p>Jangan balik baca. Tutup pelajaran sebentar, jawab di kertas, baru cek.</p>
+
+<ol>
+  <li>Sebuah citra digital grayscale 100×100 piksel mengandung berapa <i>angka</i>?</li>
+  <li>Sebutkan tiga channel warna pada citra RGB.</li>
+  <li>Berapa nilai piksel untuk <b>hitam total</b> dan <b>putih total</b> pada grayscale 8-bit?</li>
+  <li>OpenCV membaca warna dalam urutan apa? (RGB atau BGR?)</li>
+  <li>Dalam alur AI Virtual Mouse, di langkah nomor berapa MediaPipe menerima "tabel angka" dari webcam?</li>
+</ol>
+
+<details>
+  <summary>Lihat jawaban</summary>
+  <ol>
+    <li><b>10.000 angka</b>. 100 × 100 = 10.000 piksel grayscale.</li>
+    <li><b>Red, Green, Blue</b>. (Citra lain punya channel lain, mis. HSV = Hue, Saturation, Value.)</li>
+    <li><b>0 = hitam</b>, <b>255 = putih</b>. Kenapa 255? Karena 8-bit = 2⁸ = 256 nilai, mulai dari 0.</li>
+    <li><b>BGR</b>. "OpenCV terbalik."</li>
+    <li><b>Langkah 1</b>. Webcam menghasilkan frame (tabel angka), lalu MediaPipe mengolahnya di langkah 2.</li>
+  </ol>
+</details>
+</div>
+
+<div class="callout">
+<b>Untuk tutor:</b> waktu jelasin ke teman, pakai analogi <i>"seperti Excel"</i>. Citra = spreadsheet. Tiap sel = satu angka = satu warna/kecerahan. Kalau mereka sudah pernah main Excel, sisanya jadi klik.
+</div>
+
+<h2>6. Materi tambahan (kalau mau dalam-dalam)</h2>
+<ul>
+  <li>OpenCV tutorial resmi: <a href="https://docs.opencv.org/4.x/d6/d00/tutorial_py_root.html">docs.opencv.org</a> → bagian <i>Getting Started</i></li>
+  <li>Jobsheet 1 di folder kursusmu: <i>"Dasar Berkas Gambar (Citra)"</i> — persis topik ini, dengan kode Python</li>
+  <li>NumPy quickstart: bagian <i>Array Indexing</i> saja cukup untuk saat ini</li>
+</ul>
+
+<h2>7. Apa selanjutnya?</h2>
+<p>Setelah paham "citra = tabel angka", langkah logis berikutnya adalah: <b>operasi apa saja yang bisa kita lakukan pada tabel angka itu?</b> Itu akan kita bahas di pelajaran 0002: <i>operasi titik, filter, dan threshold</i>.</p>
+
+<p>Sebelum lanjut, coba jawab dua hal ini ke saya (boleh dalam Bahasa Indonesia bebas):</p>
+<ol>
+  <li>Coba jelaskan ke saya pakai bahasamu sendiri: "citra digital itu apa?"</li>
+  <li>Bagian mana yang masih bikin bingung?</li>
+</ol>
+
+<p>Jawabanmu menentukan apa yang perlu kita perdalam di pelajaran berikutnya.</p>
+
+<hr>
+<footer>
+Pelajaran 0001 · MISI: <a href="../MISSION.md">mengajar image processing</a> · 
+<a href="../RESOURCES.md">RESOURCES</a> · 
+<a href="../learning-records/0001-user-starting-point.md">LR-0001</a>
+</footer>
+
+</body>
+</html>

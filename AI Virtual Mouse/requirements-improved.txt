@@ -1,0 +1,22 @@
+# Dependencies for the improved (modern) AI Virtual Mouse runtime
+# Uses MediaPipe Tasks API and latest compatible versions
+# Install in a separate virtual environment: python -m venv .venv-improved
+
+# Computer vision
+opencv-python>=4.10.0
+
+# Hand tracking - modern Tasks API (latest version)
+mediapipe>=0.10.30
+
+# Numerical computing
+numpy>=2.0.0
+
+# Pygame for benchmark runtime
+pygame>=2.5.0
+
+# OS mouse control for modern Python
+pyautogui>=0.9.54
+
+# Legacy OS mouse control fallback when available
+# autopy may not install on all platforms with latest Python
+autopy; platform_system=="Windows" and python_version<"3.13"
